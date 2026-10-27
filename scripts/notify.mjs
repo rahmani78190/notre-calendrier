@@ -33,7 +33,17 @@ function toMin(hhmm) {
   const m = /^(\d{1,2}):(\d{2})/.exec(hhmm || '');
   return m ? Number(m[1]) * 60 + Number(m[2]) : null;
 }
-function placeTxt(e) { return e.place && e.place.name ? ` · ${e.place.name}` : ''; }
+function placeTxt(e) {
+  const age = e.age > 0 ? ` · ${e.age} an${e.age > 1 ? 's' : ''}` : '';
+  return age + (e.place && e.place.name ? ` · ${e.place.name}` : '');
+}
+function isLeap(y) { return (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0; }
+// Date d'un événement annuel pour une année donnée (29 février → 28 février hors années bissextiles)
+export function occIn(e, y) {
+  let md = e.start.slice(5);
+  if (md === '02-29' && !isLeap(y)) md = '02-28';
+  return `${y}-${md}`;
+}
 
 // Quel rappel envoyer pour cet événement, maintenant ?
 export function dueReminder(e, now) {
@@ -63,8 +73,19 @@ async function run() {
     if (tokSnap.empty) continue;
     const tokens = tokSnap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((t) => t.token);
     const evSnap = await c.collection('events').where('start', 'in', days).get();
-    for (const doc of evSnap.docs) {
+    const yearlySnap = await c.collection('events').where('yearly', '==', true).get();
+    const items = [];
+    for (const doc of evSnap.docs) if (!doc.data().yearly) items.push({ doc, e: doc.data() });
+    for (const doc of yearlySnap.docs) {
       const e = doc.data();
+      if (!e.start) continue;
+      for (const d of days) {
+        if (d >= e.start && occIn(e, Number(d.slice(0, 4))) === d) {
+          items.push({ doc, e: { ...e, start: d, end: '', age: Number(d.slice(0, 4)) - Number(e.start.slice(0, 4)) } });
+        }
+      }
+    }
+    for (const { doc, e } of items) {
       if (!e.title || !e.start) continue;
       const r = dueReminder(e, now);
       if (!r) continue;

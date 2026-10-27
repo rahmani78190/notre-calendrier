@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Notre Calendrier</title>
-<meta name="version" content="1.0">
+<meta name="version" content="1.1">
 <meta name="description" content="Notre calendrier à deux, avec le globe de nos lieux et des rappels.">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon-192.png" type="image/png">
@@ -265,6 +265,14 @@ h1 {
 .todaybox .trow small { opacity: 0.75; white-space: nowrap; }
 .todaybox .btn { background: var(--bg); color: var(--ink); border-color: var(--bg); text-decoration: none; white-space: nowrap; }
 .pick .btn.ok { background: var(--bg); color: var(--ink); border-color: var(--bg); }
+/* Jours fériés, répétition annuelle */
+.day.hol .num { color: var(--p5); font-weight: 750; }
+.day.sel.hol .num { color: var(--bg); text-decoration: underline; text-underline-offset: 3px; }
+.holi { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 12px; background: var(--surface); border: 1px dashed var(--line); color: var(--muted); font-size: 0.9rem; }
+.holi b { color: var(--ink); font-weight: 650; }
+.check { display: flex; align-items: center; gap: 10px; min-height: 44px; font-weight: 600; cursor: pointer; }
+.field > label.check { text-transform: none; letter-spacing: 0; font-size: 0.95rem; color: var(--ink); }
+.check input { width: 22px; height: 22px; accent-color: var(--ink); flex: none; margin: 0; }
 /* Formulaire */
 .overlay { position: fixed; inset: 0; background: rgba(8, 14, 24, 0.55); z-index: 50; display: flex; align-items: flex-end; justify-content: center; }
 .sheet {
@@ -421,7 +429,11 @@ textarea.input { padding: 10px 12px; min-height: 76px; resize: vertical; }
     </div>
     <div class="row2">
       <div class="field"><label for="fStart">Début</label><input class="input" id="fStart" type="date"></div>
-      <div class="field"><label for="fEnd">Fin (facultatif)</label><input class="input" id="fEnd" type="date"></div>
+      <div class="field" id="fEndBox"><label for="fEnd">Fin (facultatif)</label><input class="input" id="fEnd" type="date"></div>
+    </div>
+    <div class="field">
+      <label class="check"><input type="checkbox" id="fYearly"> Tous les ans (anniversaire, fête…)</label>
+      <p class="hint" id="fYearlyHint" hidden>Revient chaque année à la même date, avec les rappels. Pour un anniversaire, mettez la date de naissance : l’âge s’affichera.</p>
     </div>
     <div class="field">
       <label for="fTime">Heure (facultatif)</label>
@@ -569,9 +581,64 @@ textarea.input { padding: 10px 12px; min-height: 76px; resize: vertical; }
     });
   }
   function endOf(e) { return e.end && e.end >= e.start ? e.end : e.start; }
-  function eventsOn(day) {
-    return sortEv(state.events.filter(function (e) { return e.start <= day && day <= endOf(e); }));
+  function isLeap(y) { return (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0; }
+  // Date de l'événement annuel pour une année (29 février → 28 février les années non bissextiles)
+  function occIn(e, y) { var md = e.start.slice(5); if (md === '02-29' && !isLeap(y)) md = '02-28'; return y + '-' + md; }
+  function nextOcc(e, from) {
+    if (e.start >= from) return e.start;
+    var y = parseInt(from.slice(0, 4), 10), d = occIn(e, y);
+    return d >= from ? d : occIn(e, y + 1);
   }
+  function inst(e, d) {
+    var age = parseInt(d.slice(0, 4), 10) - parseInt(e.start.slice(0, 4), 10);
+    return Object.assign({}, e, { start: d, end: '', age: age });
+  }
+  function eventsOn(day) {
+    var out = [];
+    state.events.forEach(function (e) {
+      if (e.yearly) { if (day >= e.start && occIn(e, parseInt(day.slice(0, 4), 10)) === day) out.push(inst(e, day)); }
+      else if (e.start <= day && day <= endOf(e)) out.push(e);
+    });
+    return sortEv(out);
+  }
+  // Prochaines occurrences (les événements annuels sont ramenés à leur prochaine date)
+  function upcomingList() {
+    return sortEv(state.events.map(function (e) { return e.yearly ? inst(e, nextOcc(e, today)) : e; }).filter(function (e) { return endOf(e) >= today; }));
+  }
+  function inRange(e, first, last) {
+    if (!e.yearly) return e.start <= last && endOf(e) >= first;
+    var d = occIn(e, parseInt(first.slice(0, 4), 10));
+    return d >= first && d <= last && d >= e.start;
+  }
+  function ageTxt(e) { return e.yearly && e.age > 0 ? e.age + (e.age > 1 ? ' ans' : ' an') : ''; }
+
+  /* ---------- Jours fériés (France) ---------- */
+  var holCache = {};
+  function holidays(y) {
+    if (holCache[y]) return holCache[y];
+    // Date de Pâques (algorithme de Meeus/Jones/Butcher)
+    var a = y % 19, b = Math.floor(y / 100), c = y % 100, d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25),
+      g = Math.floor((b - f + 1) / 3), h = (19 * a + b - d - g + 15) % 30, i = Math.floor(c / 4), k = c % 4,
+      l = (32 + 2 * e + 2 * i - h - k) % 7, m = Math.floor((a + 11 * h + 22 * l) / 451),
+      month = Math.floor((h + l - 7 * m + 114) / 31), day = ((h + l - 7 * m + 114) % 31) + 1;
+    var easter = new Date(y, month - 1, day);
+    function plus(n) { return ymd(new Date(easter.getFullYear(), easter.getMonth(), easter.getDate() + n)); }
+    var map = {};
+    map[y + '-01-01'] = 'Jour de l’An';
+    map[plus(1)] = 'Lundi de Pâques';
+    map[y + '-05-01'] = 'Fête du Travail';
+    map[y + '-05-08'] = 'Victoire 1945';
+    map[plus(39)] = 'Ascension';
+    map[plus(50)] = 'Lundi de Pentecôte';
+    map[y + '-07-14'] = 'Fête nationale';
+    map[y + '-08-15'] = 'Assomption';
+    map[y + '-11-01'] = 'Toussaint';
+    map[y + '-11-11'] = 'Armistice 1918';
+    map[y + '-12-25'] = 'Noël';
+    holCache[y] = map;
+    return map;
+  }
+  function holidayOn(day) { return holidays(parseInt(day.slice(0, 4), 10))[day] || ''; }
   function daysBetween(a, b) { return Math.round((parseD(b) - parseD(a)) / 86400000); }
 
   /* ---------- Rendu : en-tête ---------- */
@@ -580,7 +647,7 @@ textarea.input { padding: 10px 12px; min-height: 76px; resize: vertical; }
       '<span><i class="dot a"></i>' + esc(nameOf('a')) + '</span>' +
       '<span><i class="dot b"></i>' + esc(nameOf('b')) + '</span>' +
       '<span><i class="dot ab"></i>Ensemble</span>';
-    var up = sortEv(state.events.filter(function (e) { return endOf(e) >= today; }))[0];
+    var up = upcomingList()[0];
     var el = $('#next');
     if (!up) { el.textContent = state.events.length ? 'Plus rien à venir.' : 'Rien de prévu pour le moment.'; return; }
     var d = up.start <= today ? 0 : daysBetween(today, up.start);
@@ -594,7 +661,7 @@ textarea.input { padding: 10px 12px; min-height: 76px; resize: vertical; }
     box.hidden = false; box.className = 'todaybox';
     box.innerHTML = '<h2>' + (evs.length > 1 ? 'C’est aujourd’hui : ' + evs.length + ' événements !' : 'C’est aujourd’hui !') + '</h2>' + evs.map(function (e) {
       var ps = e.place && typeof e.place.lat === 'number';
-      return '<div class="trow"><div>' + dotHtml(e) + '<b>' + esc(e.title) + '</b>' + (e.time ? '<small>' + esc(e.time) + '</small>' : '') + '</div>' +
+      return '<div class="trow"><div>' + dotHtml(e) + '<b>' + esc(e.title) + (ageTxt(e) ? ' · ' + esc(ageTxt(e)) : '') + '</b>' + (e.time ? '<small>' + esc(e.time) + '</small>' : '') + '</div>' +
         (ps && state.me ? '<span class="dist">' + esc(distLabel(e.place)) + '</span>' : '') +
         (ps ? '<a class="btn small" href="' + esc(dirUrl(e.place.lat, e.place.lon)) + '" target="_blank" rel="noopener">Itinéraire</a>' : '') + '</div>';
     }).join('') + (!state.me && evs.some(function (e) { return e.place && typeof e.place.lat === 'number'; }) ? '<button class="btn small" type="button" id="todayLocate" style="align-self:flex-start">Où suis-je par rapport au lieu ?</button>' : '');
@@ -636,13 +703,14 @@ textarea.input { padding: 10px 12px; min-height: 76px; resize: vertical; }
       if (inMonth && evs.length) monthCount += 0;
       var seen = {}, dots = '';
       evs.forEach(function (e) { var ck = colorKey(e); if (!seen[ck] && Object.keys(seen).length < 4) { seen[ck] = 1; dots += '<i style="background:var(--' + ck + ')"></i>'; } });
-      var label = fmtDay.format(d) + (evs.length ? ', ' + evs.length + (evs.length > 1 ? ' événements' : ' événement') : '');
-      html += '<button type="button" class="day' + (inMonth ? '' : ' out') + (s === today ? ' today' : '') + (s === state.selected ? ' sel' : '') +
+      var hol = holidayOn(s);
+      var label = fmtDay.format(d) + (hol ? ', férié : ' + hol : '') + (evs.length ? ', ' + evs.length + (evs.length > 1 ? ' événements' : ' événement') : '');
+      html += '<button type="button" class="day' + (inMonth ? '' : ' out') + (s === today ? ' today' : '') + (s === state.selected ? ' sel' : '') + (hol ? ' hol' : '') +
         '" data-date="' + s + '" aria-label="' + esc(label) + '" aria-pressed="' + (s === state.selected) + '"><span class="num">' + d.getDate() + '</span><span class="dots">' + dots + '</span></button>';
     }
     $('#days').innerHTML = html;
     var first = ymd(new Date(y, m, 1)), last = ymd(new Date(y, m + 1, 0));
-    var inM = state.events.filter(function (e) { return e.start <= last && endOf(e) >= first; }).length;
+    var inM = state.events.filter(function (e) { return inRange(e, first, last); }).length;
     $('#monthCount').textContent = inM ? inM + (inM > 1 ? ' événements ce mois-ci' : ' événement ce mois-ci') : 'Rien ce mois-ci';
   }
 
@@ -652,8 +720,8 @@ textarea.input { padding: 10px 12px; min-height: 76px; resize: vertical; }
     var range = e.end && e.end > e.start ? '<div class="meta">jusqu’au ' + esc(fmtShort.format(parseD(e.end))) + '</div>' : '';
     return '<div class="ev" data-id="' + esc(e.id) + '" data-act="edit" role="button" tabindex="0">' +
       '<div class="when">' + esc(when) + '</div>' +
-      '<div class="main"><div class="title">' + dotHtml(e) + '<span class="t">' + esc(e.title) + '</span></div>' +
-      '<div class="meta"><span>' + esc(whoLabel(e.who)) + '</span>' + (ps ? '<span>·</span>' + PIN_SVG + '<span>' + esc(e.place.name) + '</span><a data-act="link" href="' + esc(dirUrl(e.place.lat, e.place.lon)) + '" target="_blank" rel="noopener">Itinéraire</a>' : '') + '</div>' + range +
+      '<div class="main"><div class="title">' + dotHtml(e) + '<span class="t">' + esc(e.title) + (ageTxt(e) ? ' · ' + esc(ageTxt(e)) : '') + '</span></div>' +
+      '<div class="meta"><span>' + esc(whoLabel(e.who)) + (e.yearly ? ' · tous les ans' : '') + '</span>' + (ps ? '<span>·</span>' + PIN_SVG + '<span>' + esc(e.place.name) + '</span><a data-act="link" href="' + esc(dirUrl(e.place.lat, e.place.lon)) + '" target="_blank" rel="noopener">Itinéraire</a>' : '') + '</div>' + range +
       (e.note ? '<div class="note">' + esc(e.note) + '</div>' : '') + '</div>' +
       (ps ? '<button type="button" class="btn small go" data-id="' + esc(e.id) + '" data-act="show">Globe</button>' : '<span></span>') + '</div>';
   }
@@ -662,16 +730,18 @@ textarea.input { padding: 10px 12px; min-height: 76px; resize: vertical; }
     var d = parseD(state.selected), evs = eventsOn(state.selected);
     $('#dayTitle').textContent = state.selected === today ? 'Aujourd’hui' : fmtDay.format(d);
     $('#dayCount').textContent = evs.length ? evs.length + (evs.length > 1 ? ' événements' : ' événement') : '';
-    var box = $('#dayList');
+    var box = $('#dayList'), hol = holidayOn(state.selected);
+    var holHtml = hol ? '<div class="holi">🇫🇷 <span>Jour férié · <b>' + esc(hol) + '</b></span></div>' : '';
+    if (!evs.length && hol) { box.innerHTML = holHtml; return; }
     if (!evs.length) {
       var canAdd = true;
       box.innerHTML = '<div class="empty"><p>' + (state.events.length ? 'Rien de prévu ce jour-là.' : 'Votre calendrier est vide. Ajoutez votre premier événement avec une adresse pour le voir apparaître sur le globe.') + '</p>' +
         (canAdd ? '<button class="btn small" type="button" data-act="add">Ajouter un événement</button>' : '') + '</div>';
-    } else box.innerHTML = evs.map(function (e) { return evCard(e, false); }).join('');
+    } else box.innerHTML = holHtml + evs.map(function (e) { return evCard(e, false); }).join('');
   }
 
   function renderUpcoming() {
-    var up = sortEv(state.events.filter(function (e) { return endOf(e) >= today; })).slice(0, 4);
+    var up = upcomingList().slice(0, 4);
     var box = $('#upList');
     if (!up.length) { box.innerHTML = '<p class="hint">Les prochains événements apparaîtront ici.</p>'; return; }
     box.innerHTML = up.map(function (e) {
@@ -728,8 +798,8 @@ textarea.input { padding: 10px 12px; min-height: 76px; resize: vertical; }
     var y = state.month.getFullYear(), m = state.month.getMonth(), first = ymd(new Date(y, m, 1)), last = ymd(new Date(y, m + 1, 0));
     return state.events.filter(function (e) {
       if (!(e.place && typeof e.place.lat === 'number' && typeof e.place.lon === 'number')) return false;
-      if (state.filter === 'upcoming') return endOf(e) >= today;
-      if (state.filter === 'month') return e.start <= last && endOf(e) >= first;
+      if (state.filter === 'upcoming') return e.yearly || endOf(e) >= today;
+      if (state.filter === 'month') return inRange(e, first, last);
       return true;
     });
   }
@@ -743,7 +813,7 @@ textarea.input { padding: 10px 12px; min-height: 76px; resize: vertical; }
       var g = map[k];
       g.events.push(e);
       var ck = colorKey(e); if (g.colors.indexOf(ck) < 0) g.colors.push(ck);
-      if (endOf(e) >= today) g.past = false;
+      if (e.yearly || endOf(e) >= today) g.past = false;
     });
     G.groups = groups;
     var allPl = state.events.filter(function (e) { return e.place && typeof e.place.lat === 'number'; }), uniq = {};
@@ -1026,7 +1096,7 @@ textarea.input { padding: 10px 12px; min-height: 76px; resize: vertical; }
     box.className = 'card pincard';
     box.innerHTML = '<h3><span>' + esc(g.name) + '</span><button class="icon-btn" type="button" data-act="closepin" aria-label="Fermer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></h3>' +
       g.events.map(function (e) {
-        return '<div class="row"><div><b>' + esc(e.title) + '</b><small>' + esc(fmtShort.format(parseD(e.start))) + (e.end && e.end > e.start ? ' → ' + esc(fmtShort.format(parseD(e.end))) : '') + ' · ' + esc(whoLabel(e.who)) + '</small></div>' +
+        return '<div class="row"><div><b>' + esc(e.title) + '</b><small>' + esc(fmtShort.format(parseD(e.yearly ? nextOcc(e, today) : e.start))) + (e.yearly ? ' (tous les ans)' : '') + (!e.yearly && e.end && e.end > e.start ? ' → ' + esc(fmtShort.format(parseD(e.end))) : '') + ' · ' + esc(whoLabel(e.who)) + '</small></div>' +
           '<button class="btn small" type="button" data-act="jump" data-id="' + esc(e.id) + '">Calendrier</button></div>';
       }).join('') +
       (state.me ? '<div class="row"><span class="sun">Vous êtes ' + esc(distLabel(g)) + '</span></div>' : '') +
@@ -1035,7 +1105,7 @@ textarea.input { padding: 10px 12px; min-height: 76px; resize: vertical; }
   }
 
   function flyHome() {
-    var up = sortEv(state.events.filter(function (e) { return e.place && typeof e.place.lat === 'number' && endOf(e) >= today; }))[0] ||
+    var up = sortEv(state.events.filter(function (e) { return e.place && typeof e.place.lat === 'number' && (e.yearly || endOf(e) >= today); }))[0] ||
       sortEv(state.events.filter(function (e) { return e.place && typeof e.place.lat === 'number'; })).pop();
     if (up) G.flyTo(up.place.lon, up.place.lat, 1.3);
     else G.flyTo(2.35, 30, 1);
@@ -1137,6 +1207,7 @@ textarea.input { padding: 10px 12px; min-height: 76px; resize: vertical; }
     $('#fTitle').value = state.draft.title || '';
     $('#fStart').value = state.draft.start || state.selected;
     $('#fEnd').value = state.draft.end || '';
+    $('#fYearly').checked = !!state.draft.yearly; syncYearly();
     $('#fTime').value = state.draft.time || '';
     $('#fNote').value = state.draft.note || '';
     $('#fPlace').value = '';
@@ -1147,9 +1218,14 @@ textarea.input { padding: 10px 12px; min-height: 76px; resize: vertical; }
     if (isNew) setTimeout(function () { try { $('#fTitle').focus(); } catch (e) {} }, 30);
   }
   function closeSheet() { $('#overlay').hidden = true; state.draft = null; }
+  function syncYearly() {
+    var on = $('#fYearly').checked;
+    $('#fEndBox').style.visibility = on ? 'hidden' : '';
+    $('#fYearlyHint').hidden = !on;
+  }
   function readForm() {
     var d = state.draft; if (!d) return;
-    d.title = $('#fTitle').value.trim(); d.start = $('#fStart').value; d.end = $('#fEnd').value; d.time = $('#fTime').value; d.note = $('#fNote').value.trim();
+    d.title = $('#fTitle').value.trim(); d.start = $('#fStart').value; d.end = $('#fEnd').value; d.yearly = $('#fYearly').checked; if (d.yearly) d.end = ''; d.time = $('#fTime').value; d.note = $('#fNote').value.trim();
     if (d.place) { var nm = $('#fPlaceName').value.trim(); if (nm) d.place.name = nm; }
   }
   function showErr(msg) { var e = $('#fErr'); e.textContent = msg; e.hidden = false; }
@@ -1223,7 +1299,7 @@ textarea.input { padding: 10px 12px; min-height: 76px; resize: vertical; }
     else toast('Enregistrement impossible. Réessayez dans un instant.');
   }
   function cleanData(d) {
-    var out = { title: d.title, who: d.who, color: /^p[1-8]$/.test(d.color || '') ? d.color : '', start: d.start, end: d.end && d.end > d.start ? d.end : '', time: d.time || '', note: d.note || '', place: null };
+    var out = { title: d.title, who: d.who, yearly: !!d.yearly, color: /^p[1-8]$/.test(d.color || '') ? d.color : '', start: d.start, end: d.end && d.end > d.start ? d.end : '', time: d.time || '', note: d.note || '', place: null };
     if (d.place && typeof d.place.lat === 'number' && typeof d.place.lon === 'number') out.place = { name: d.place.name || 'Lieu', lat: d.place.lat, lon: d.place.lon };
     return out;
   }
@@ -1250,8 +1326,8 @@ textarea.input { padding: 10px 12px; min-height: 76px; resize: vertical; }
   /* ---------- Événements d'interface ---------- */
   function jumpTo(id) {
     var e = state.events.filter(function (x) { return x.id === id; })[0]; if (!e) return;
-    var d = parseD(e.start);
-    state.month = new Date(d.getFullYear(), d.getMonth(), 1); state.selected = e.start;
+    var when = e.yearly ? nextOcc(e, today) : e.start, d = parseD(when);
+    state.month = new Date(d.getFullYear(), d.getMonth(), 1); state.selected = when;
     setView('cal'); renderAll();
     if (e.place && typeof e.place.lat === 'number') G.flyTo(e.place.lon, e.place.lat, 1.5);
     window.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' });
@@ -1323,6 +1399,7 @@ textarea.input { padding: 10px 12px; min-height: 76px; resize: vertical; }
 
     // Formulaire
     $('#fWho').addEventListener('click', function (ev) { var b = ev.target.closest('button[data-who]'); if (!b) return; state.draft.who = b.getAttribute('data-who'); renderWho(); renderColor(); });
+    $('#fYearly').addEventListener('change', syncYearly);
     $('#fColor').addEventListener('click', function (ev) { var b = ev.target.closest('button[data-color]'); if (!b) return; state.draft.color = b.getAttribute('data-color'); state.draft.autoColor = false; renderColor(); });
     $('#fStart').addEventListener('change', function (ev) { var d = state.draft; if (d && !d.id && d.autoColor && ev.target.value) { d.color = pickFreeColor(ev.target.value); renderColor(); } });
     $('#pickOk').addEventListener('click', function () {
@@ -1388,8 +1465,8 @@ textarea.input { padding: 10px 12px; min-height: 76px; resize: vertical; }
       }
       try {
         await saveEvent(d);
-        var sd = parseD(d.start);
-        state.month = new Date(sd.getFullYear(), sd.getMonth(), 1); state.selected = d.start;
+        var sday = d.yearly ? nextOcc(d, today) : d.start, sd = parseD(sday);
+        state.month = new Date(sd.getFullYear(), sd.getMonth(), 1); state.selected = sday;
         closeSheet(); renderAll();
         toast('Événement enregistré');
       } catch (e) { writeFail(e); }
