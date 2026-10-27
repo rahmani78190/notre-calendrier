@@ -1,0 +1,15 @@
+{
+  "name": "Notre Calendrier",
+  "short_name": "Calendrier",
+  "description": "Notre calendrier à deux, avec le globe de nos lieux et des rappels.",
+  "lang": "fr",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#ECF0F5",
+  "theme_color": "#ECF0F5",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

@@ -1,0 +1,1698 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Notre Calendrier</title>
+<meta name="description" content="Notre calendrier à deux, avec le globe de nos lieux et des rappels.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Calendrier">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#ECF0F5" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0B131E" media="(prefers-color-scheme: dark)">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}[hidden]{display:none!important}</style>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Figtree:wght@400..700&display=swap">
+<style>
+/* Mise en page : calendrier à gauche, globe à droite sur grand écran ; deux onglets sur téléphone.
+   Palette : encre bleu nuit, océan pâle, trois couleurs de porteur (lui, elle, ensemble). */
+:root {
+  --bg: #ECF0F5;
+  --surface: #FFFFFF;
+  --ink: #12202F;
+  --muted: #5A6B80;
+  --line: #D6DFE9;
+  --ocean: #D2E1EE;
+  --land: #FAFBFC;
+  --coast: #8FA6BD;
+  --grid: rgba(18, 32, 47, 0.10);
+  --night: rgba(10, 20, 60, 0.16);
+  --a: #2563E8;
+  --b: #DB3F7A;
+  --both: #D99200;
+  --p1: #16A34A; --p2: #0D9488; --p3: #7C3AED; --p4: #EA580C; --p5: #DC2626; --p6: #0284C7; --p7: #9A5B13; --p8: #475569;
+  --shadow: 0 1px 2px rgba(18, 32, 47, 0.06), 0 8px 24px rgba(18, 32, 47, 0.06);
+  --font-display: 'Bricolage Grotesque', 'Avenir Next', 'Segoe UI', sans-serif;
+  --font-body: 'Figtree', system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0B131E;
+    --surface: #121D2B;
+    --ink: #E8EEF6;
+    --muted: #8DA0B7;
+    --line: #223349;
+    --ocean: #0F2438;
+    --land: #29405A;
+    --coast: #4A6685;
+    --grid: rgba(232, 238, 246, 0.08);
+    --night: rgba(0, 0, 0, 0.30);
+    --a: #6F9DFF;
+    --b: #FF7FA9;
+    --both: #FFC24A;
+  --p1: #4ADE80; --p2: #2DD4BF; --p3: #A78BFA; --p4: #FB923C; --p5: #F87171; --p6: #38BDF8; --p7: #D6A26B; --p8: #94A3B8;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.35);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0B131E;
+  --surface: #121D2B;
+  --ink: #E8EEF6;
+  --muted: #8DA0B7;
+  --line: #223349;
+  --ocean: #0F2438;
+  --land: #29405A;
+  --coast: #4A6685;
+  --grid: rgba(232, 238, 246, 0.08);
+    --night: rgba(0, 0, 0, 0.30);
+  --a: #6F9DFF;
+  --b: #FF7FA9;
+  --both: #FFC24A;
+  --p1: #4ADE80; --p2: #2DD4BF; --p3: #A78BFA; --p4: #FB923C; --p5: #F87171; --p6: #38BDF8; --p7: #D6A26B; --p8: #94A3B8;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.35);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.45;
+  padding-block: 18px 40px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  -webkit-text-size-adjust: 100%;
+}
+button, input, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--a); outline-offset: 2px; }
+.app { max-width: 1120px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+
+/* En-tête */
+.top { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
+.top > div { min-width: 0; }
+h1 {
+  font-family: var(--font-display);
+  font-weight: 760;
+  font-size: 2.1rem;
+  line-height: 1.02;
+  letter-spacing: -0.025em;
+  margin: 0;
+  text-wrap: balance;
+}
+.next { margin: 6px 0 0; color: var(--muted); font-size: 0.95rem; }
+.next b { color: var(--ink); font-weight: 650; }
+.legend {
+  display: inline-flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 10px;
+  background: none; border: 0; padding: 4px 0; font-size: 0.85rem; color: var(--muted); text-align: left;
+}
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; flex: none; }
+.dot.a { background: var(--a); } .dot.b { background: var(--b); } .dot.ab { background: var(--both); }
+.btn {
+  min-height: 44px; padding: 0 16px; border-radius: 12px; border: 1px solid var(--line);
+  background: var(--surface); font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+}
+.btn.primary { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.btn.danger { color: #C23B3B; }
+:root[data-theme="dark"] .btn.danger { color: #FF8A8A; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .btn.danger { color: #FF8A8A; } }
+.btn.small { min-height: 36px; padding: 0 12px; font-size: 0.88rem; border-radius: 10px; }
+.btn[disabled] { opacity: 0.5; cursor: default; }
+.icon-btn {
+  width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--line); background: var(--surface);
+  display: inline-flex; align-items: center; justify-content: center; padding: 0; flex: none;
+}
+
+/* Bandeau d'information */
+.notice {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 14px 16px;
+  box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 10px;
+}
+.notice p { margin: 0; color: var(--muted); }
+.notice h2 { margin: 0; font-family: var(--font-display); font-size: 1.05rem; font-weight: 700; }
+.names-form { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.names-form .full { grid-column: 1 / -1; display: flex; gap: 8px; flex-wrap: wrap; }
+@media (max-width: 420px) { .names-form { grid-template-columns: 1fr; } }
+
+/* Onglets (téléphone) */
+.tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; background: var(--line); border-radius: 14px; }
+.tabs button { min-height: 40px; border: 0; border-radius: 10px; background: transparent; font-weight: 600; color: var(--muted); }
+.tabs button[aria-selected="true"] { background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
+
+.layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 22px; align-items: start; }
+.pane { min-width: 0; display: flex; flex-direction: column; gap: 16px; }
+@media (max-width: 959px) {
+  .app[data-view="cal"] #globePane { display: none; }
+  .app[data-view="globe"] #calPane { display: none; }
+}
+@media (min-width: 960px) {
+  .tabs { display: none; }
+  .layout { grid-template-columns: minmax(340px, 430px) minmax(0, 1fr); }
+  #globePane { position: sticky; top: 18px; }
+  h1 { font-size: 2.5rem; }
+}
+
+/* Calendrier */
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 14px; box-shadow: var(--shadow); }
+.month-nav { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.month-nav h2 {
+  flex: 1; margin: 0; font-family: var(--font-display); font-weight: 700; font-size: 1.25rem;
+  letter-spacing: -0.01em; text-transform: capitalize; min-width: 0;
+}
+.weekdays, .days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+.weekdays { margin-bottom: 4px; }
+.weekdays span { text-align: center; font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); padding: 4px 0; }
+.days { gap: 2px; }
+.day {
+  position: relative; height: 48px; border: 0; background: transparent; border-radius: 12px;
+  display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 3px; padding-top: 6px;
+  font-variant-numeric: tabular-nums;
+}
+.day .num { width: 26px; height: 26px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: 600; font-size: 0.92rem; }
+.day.out { color: var(--muted); opacity: 0.5; }
+.day.today .num { box-shadow: inset 0 0 0 1.5px var(--ink); }
+.day.sel { background: var(--ink); color: var(--bg); }
+.day.sel .num { box-shadow: none; }
+.day .dots { display: flex; gap: 3px; height: 6px; }
+.day .dots i { width: 5px; height: 5px; border-radius: 50%; display: block; }
+.day .dots i.a { background: var(--a); } .day .dots i.b { background: var(--b); } .day .dots i.ab { background: var(--both); }
+.day.sel .dots i { box-shadow: 0 0 0 1px var(--ink); }
+.cal-foot { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; gap: 8px; }
+
+.section-title { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin: 0; }
+.section-title h3 { margin: 0; font-family: var(--font-display); font-size: 1.1rem; font-weight: 700; text-transform: capitalize; }
+.section-title span { color: var(--muted); font-size: 0.85rem; }
+.list { display: flex; flex-direction: column; gap: 8px; }
+.ev {
+  display: grid; grid-template-columns: 52px minmax(0, 1fr) auto; gap: 10px; align-items: center;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 10px 10px 10px 12px; text-align: left; width: 100%;
+}
+.ev .when { font-variant-numeric: tabular-nums; font-size: 0.85rem; color: var(--muted); font-weight: 600; line-height: 1.2; }
+.ev .main { min-width: 0; }
+.ev .title { font-weight: 650; display: flex; align-items: center; gap: 8px; min-width: 0; }
+.ev .title span.t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ev .meta { color: var(--muted); font-size: 0.85rem; display: flex; align-items: center; gap: 5px; margin-top: 2px; min-width: 0; }
+.ev .meta span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ev .note { color: var(--muted); font-size: 0.85rem; margin-top: 4px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.ev .go { white-space: nowrap; }
+.empty {
+  border: 1px dashed var(--line); border-radius: 14px; padding: 16px; color: var(--muted);
+  display: flex; flex-direction: column; gap: 10px; align-items: flex-start;
+}
+.empty p { margin: 0; }
+.up {
+  display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 12px; align-items: center; width: 100%; text-align: left;
+  background: transparent; border: 0; border-bottom: 1px solid var(--line); padding: 10px 2px; border-radius: 0;
+}
+.up:last-child { border-bottom: 0; }
+.up .chip { text-align: center; line-height: 1.05; }
+.up .chip b { display: block; font-family: var(--font-display); font-size: 1.3rem; font-variant-numeric: tabular-nums; }
+.up .chip small { font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.up .t { font-weight: 650; display: flex; align-items: center; gap: 8px; }
+.up .m { color: var(--muted); font-size: 0.85rem; }
+
+/* Globe */
+.globe-wrap { position: relative; width: 100%; max-width: 640px; margin: 0 auto; aspect-ratio: 1 / 1; }
+#globe { width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; border-radius: 50%; }
+#globe.drag { cursor: grabbing; }
+.globe-ctl { position: absolute; right: 0; bottom: 4%; display: flex; flex-direction: column; gap: 8px; }
+.globe-note { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; text-align: center; color: var(--muted); font-size: 0.9rem; pointer-events: none; padding: 20%; }
+.pick {
+  position: absolute; left: 50%; top: 2%; transform: translateX(-50%); width: max-content; max-width: 94%;
+  background: var(--ink); color: var(--bg); border-radius: 14px; padding: 8px 8px 8px 14px;
+  display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 0.9rem; z-index: 2;
+}
+.pick .btn { min-height: 34px; background: transparent; color: var(--bg); border-color: rgba(255, 255, 255, 0.35); }
+.seg { display: inline-flex; padding: 3px; gap: 3px; background: var(--line); border-radius: 12px; align-self: center; }
+.seg button { min-height: 34px; padding: 0 12px; border: 0; background: transparent; border-radius: 9px; font-weight: 600; font-size: 0.88rem; color: var(--muted); }
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
+.globe-row { display: flex; justify-content: center; }
+.pincard { padding: 14px; display: flex; flex-direction: column; gap: 8px; }
+.pincard h3 { margin: 0; font-family: var(--font-display); font-size: 1.15rem; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.pincard .row { display: flex; align-items: center; gap: 8px; justify-content: space-between; border-top: 1px solid var(--line); padding-top: 8px; }
+.pincard .row div { min-width: 0; }
+.sun { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 0.9rem; }
+.sun i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.maplink { text-decoration: none; color: var(--ink); }
+.ev .meta a { color: var(--muted); text-decoration: underline; white-space: nowrap; }
+.pincard .row small { color: var(--muted); display: block; }
+
+/* Couleurs d'événement */
+.colors { display: flex; flex-wrap: wrap; gap: 7px; }
+.colors button {
+  width: 32px; height: 32px; border-radius: 50%; border: 2px solid var(--surface); padding: 0;
+  box-shadow: 0 0 0 1px var(--line); display: inline-flex; align-items: center; justify-content: center; color: #fff;
+}
+.colors button[aria-pressed="true"] { box-shadow: 0 0 0 2.5px var(--ink); }
+.colors button.auto { font-size: 0.56rem; font-weight: 700; letter-spacing: 0.02em; }
+/* Bandeau du jour */
+.todaybox { background: var(--ink); color: var(--bg); border-radius: 18px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; box-shadow: var(--shadow); }
+.todaybox h2 { margin: 0; font-family: var(--font-display); font-size: 1.15rem; font-weight: 720; }
+.todaybox .trow { display: flex; align-items: center; gap: 10px; justify-content: space-between; border-top: 1px solid rgba(127,127,127,0.35); padding-top: 10px; }
+.todaybox .trow div { min-width: 0; display: flex; align-items: center; gap: 8px; }
+.todaybox .trow b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.todaybox .trow small { opacity: 0.75; white-space: nowrap; }
+.todaybox .btn { background: var(--bg); color: var(--ink); border-color: var(--bg); text-decoration: none; white-space: nowrap; }
+.pick .btn.ok { background: var(--bg); color: var(--ink); border-color: var(--bg); }
+/* Formulaire */
+.overlay { position: fixed; inset: 0; background: rgba(8, 14, 24, 0.55); z-index: 50; display: flex; align-items: flex-end; justify-content: center; }
+.sheet {
+  width: 100%; max-width: 560px; max-height: 92dvh; overflow-y: auto; background: var(--surface); color: var(--ink);
+  border-radius: 22px 22px 0 0; border: 1px solid var(--line);
+  padding-top: 18px;
+  padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  padding-left: max(20px, env(safe-area-inset-left, 0px));
+  padding-right: max(20px, env(safe-area-inset-right, 0px));
+  display: flex; flex-direction: column; gap: 14px;
+}
+@media (min-width: 640px) { .overlay { align-items: center; } .sheet { border-radius: 22px; padding-bottom: 20px; } }
+.sheet h2 { margin: 0; font-family: var(--font-display); font-size: 1.3rem; font-weight: 720; }
+.field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.field > label, .field > .lab { font-size: 0.78rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.input {
+  width: 100%; min-height: 46px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg);
+  padding: 0 12px; font-size: 16px;
+}
+textarea.input { padding: 10px 12px; min-height: 76px; resize: vertical; }
+.row2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.who { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.who button {
+  min-height: 44px; border: 1px solid var(--line); background: var(--bg); border-radius: 12px; display: flex; align-items: center; justify-content: center; gap: 7px;
+  font-weight: 600; font-size: 0.9rem; padding: 0 6px; min-width: 0;
+}
+.who button span.n { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.who button[aria-pressed="true"] { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+.sug { display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.sug button { text-align: left; border: 0; border-bottom: 1px solid var(--line); background: var(--bg); min-height: 42px; padding: 0 12px; display: flex; justify-content: space-between; gap: 10px; align-items: center; }
+.sug button:last-child { border-bottom: 0; }
+.sug small { color: var(--muted); }
+.placesel { display: flex; flex-direction: column; gap: 8px; border: 1px solid var(--line); border-radius: 12px; padding: 10px; background: var(--bg); }
+.placesel .coords { font-size: 0.78rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.placesel .line { display: flex; gap: 8px; align-items: center; }
+.hint { color: var(--muted); font-size: 0.82rem; margin: 0; }
+.err { color: #C23B3B; font-size: 0.85rem; margin: 0; }
+:root[data-theme="dark"] .err { color: #FF8A8A; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .err { color: #FF8A8A; } }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.actions .grow { flex: 1; }
+.toast {
+  position: fixed; left: 50%; transform: translateX(-50%); z-index: 60; max-width: calc(100% - 32px);
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 12px; font-weight: 600; font-size: 0.9rem; box-shadow: var(--shadow);
+}
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; transition: none !important; } }
+/* Accueil, réglages */
+.setup { position: fixed; inset: 0; z-index: 70; background: var(--bg); overflow-y: auto;
+  padding: calc(28px + env(safe-area-inset-top, 0px)) max(20px, env(safe-area-inset-left, 0px)) calc(28px + env(safe-area-inset-bottom, 0px)); }
+.setup .box { max-width: 460px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+.setup h1 { font-size: 2.3rem; }
+.setup p { margin: 0; color: var(--muted); }
+.setup .or { text-align: center; color: var(--muted); font-size: 0.85rem; }
+.setup .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.setup .pair .btn { min-height: 64px; font-size: 1.05rem; }
+.top-actions { display: flex; gap: 8px; align-items: center; flex: none; }
+@media (max-width: 400px) { .top-actions #addBtn { padding: 0 12px; } }
+.set-row { display: flex; flex-direction: column; gap: 8px; border-top: 1px solid var(--line); padding-top: 14px; }
+.set-row h3 { margin: 0; font-size: 1rem; font-family: var(--font-display); }
+.set-row p { margin: 0; color: var(--muted); font-size: 0.9rem; }
+.codebox { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.85rem; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px; word-break: break-all; }
+.steps { margin: 0; padding-left: 20px; color: var(--muted); display: flex; flex-direction: column; gap: 4px; }
+.todaybox .dist { opacity: 0.75; font-size: 0.85rem; white-space: nowrap; }
+</style>
+
+<div class="setup" id="setup" hidden></div>
+
+<div class="app" id="app" data-view="cal">
+  <header class="top">
+    <div>
+      <h1>Notre Calendrier</h1>
+      <p class="next" id="next"></p>
+      <button class="legend" id="legend" type="button" aria-label="Modifier les prénoms"></button>
+    </div>
+    <div class="top-actions">
+      <button class="icon-btn" id="setBtn" type="button" aria-label="Réglages et rappels"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg></button>
+      <button class="btn primary" id="addBtn" type="button">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        Ajouter
+      </button>
+    </div>
+  </header>
+
+  <div id="todayBox" hidden></div>
+  <div id="notice" hidden></div>
+
+  <nav class="tabs" role="tablist" aria-label="Affichage">
+    <button type="button" role="tab" id="tabCal" aria-selected="true">Calendrier</button>
+    <button type="button" role="tab" id="tabGlobe" aria-selected="false">Globe</button>
+  </nav>
+
+  <div class="layout">
+    <section class="pane" id="calPane" aria-label="Calendrier">
+      <div class="card">
+        <div class="month-nav">
+          <h2 id="monthTitle"></h2>
+          <button class="icon-btn" id="prevM" type="button" aria-label="Mois précédent"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
+          <button class="icon-btn" id="nextM" type="button" aria-label="Mois suivant"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></button>
+        </div>
+        <div class="weekdays" aria-hidden="true"><span>lun</span><span>mar</span><span>mer</span><span>jeu</span><span>ven</span><span>sam</span><span>dim</span></div>
+        <div class="days" id="days"></div>
+        <div class="cal-foot"><button class="btn small" id="todayBtn" type="button">Aujourd’hui</button><span class="hint" id="monthCount"></span></div>
+      </div>
+      <div class="pane" style="gap:10px">
+        <div class="section-title"><h3 id="dayTitle"></h3><span id="dayCount"></span></div>
+        <div class="list" id="dayList"></div>
+      </div>
+      <div class="pane" style="gap:6px">
+        <div class="section-title"><h3>À venir</h3></div>
+        <div id="upList"></div>
+      </div>
+    </section>
+
+    <section class="pane" id="globePane" aria-label="Globe">
+      <div class="globe-wrap" id="globeWrap">
+        <canvas id="globe" aria-label="Globe terrestre avec vos lieux. Glissez pour tourner."></canvas>
+        <div class="globe-note" id="globeNote" hidden></div>
+        <div class="pick" id="pick" hidden><span id="pickTxt">Zoomez, puis touchez l’endroit exact</span><button class="btn small ok" id="pickOk" type="button" hidden>Valider</button><button class="btn small" id="pickCancel" type="button">Annuler</button></div>
+        <div class="globe-ctl">
+          <button class="icon-btn" id="zIn" type="button" aria-label="Zoom avant"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
+          <button class="icon-btn" id="zOut" type="button" aria-label="Zoom arrière"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 12h14"/></svg></button>
+          <button class="icon-btn" id="zMe" type="button" aria-label="Ma position"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M21.7 2.3a1 1 0 0 0-1.06-.23l-18 7a1 1 0 0 0 .08 1.9l7.6 2.18 2.18 7.6a1 1 0 0 0 .93.73h.03a1 1 0 0 0 .94-.64l7-18a1 1 0 0 0-.23-1.06z"/></svg></button>
+          <button class="icon-btn" id="zHome" type="button" aria-label="Aller au prochain événement"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2.2"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></button>
+        </div>
+      </div>
+      <div class="globe-row">
+        <div class="seg" role="group" aria-label="Quels lieux afficher">
+          <button type="button" data-f="all" aria-pressed="true">Tout</button>
+          <button type="button" data-f="upcoming" aria-pressed="false">À venir</button>
+          <button type="button" data-f="month" aria-pressed="false">Ce mois-ci</button>
+        </div>
+      </div>
+      <p class="hint" id="globeStat" style="text-align:center;margin:0"></p>
+      <div id="pinCard" hidden></div>
+    </section>
+  </div>
+</div>
+
+<div class="overlay" id="overlay" hidden>
+  <form class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle" novalidate>
+    <h2 id="sheetTitle">Nouvel événement</h2>
+    <div class="field">
+      <label for="fTitle">Titre</label>
+      <input class="input" id="fTitle" type="text" maxlength="80" placeholder="Week-end à Lisbonne" autocomplete="off">
+    </div>
+    <div class="field">
+      <span class="lab">Pour qui</span>
+      <div class="who" id="fWho"></div>
+    </div>
+    <div class="field">
+      <span class="lab">Couleur</span>
+      <div class="colors" id="fColor" role="group" aria-label="Couleur de l’événement"></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label for="fStart">Début</label><input class="input" id="fStart" type="date"></div>
+      <div class="field"><label for="fEnd">Fin (facultatif)</label><input class="input" id="fEnd" type="date"></div>
+    </div>
+    <div class="field">
+      <label for="fTime">Heure (facultatif)</label>
+      <input class="input" id="fTime" type="time">
+    </div>
+    <div class="field">
+      <label for="fPlace">Adresse ou lieu</label>
+      <input class="input" id="fPlace" type="search" placeholder="12 rue de la Paix, Paris" autocomplete="off">
+      <div class="sug" id="fSug" hidden></div>
+      <div class="placesel" id="fPlaceSel" hidden>
+        <div class="line">
+          <input class="input" id="fPlaceName" type="text" maxlength="60" aria-label="Nom du lieu">
+          <button class="icon-btn" id="fPlaceClear" type="button" aria-label="Retirer le lieu"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+        </div>
+        <span class="coords" id="fCoords"></span>
+      </div>
+      <button class="btn small" id="fPick" type="button" style="align-self:flex-start">Choisir sur le globe</button>
+      <p class="hint">Tapez une adresse (rue, ville) puis « Chercher cette adresse » et choisissez le bon résultat. Vous pouvez aussi coller des coordonnées ou un lien Google Maps.</p>
+    </div>
+    <div class="field">
+      <label for="fNote">Note (facultatif)</label>
+      <textarea class="input" id="fNote" maxlength="400" placeholder="Réservation, vol, idée de resto…"></textarea>
+    </div>
+    <p class="err" id="fErr" hidden></p>
+    <div class="actions">
+      <button class="btn primary grow" id="fSave" type="submit">Enregistrer</button>
+      <button class="btn" id="fCancel" type="button">Annuler</button>
+      <button class="btn danger" id="fDelete" type="button" hidden>Supprimer</button>
+    </div>
+  </form>
+</div>
+<div class="overlay" id="setOverlay" hidden>
+  <div class="sheet" id="setSheet" role="dialog" aria-modal="true" aria-labelledby="setTitle"></div>
+</div>
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<script type="module">
+(function () {
+  'use strict';
+
+  /* ---------- Villes proposées (nom|pays|lat|lon) ---------- */
+  var CITY_DATA = [
+    'Paris|France|48.86|2.35','Marseille|France|43.30|5.37','Lyon|France|45.76|4.84','Toulouse|France|43.60|1.44','Nice|France|43.70|7.27',
+    'Nantes|France|47.22|-1.55','Montpellier|France|43.61|3.88','Strasbourg|France|48.57|7.75','Bordeaux|France|44.84|-0.58','Lille|France|50.63|3.06',
+    'Rennes|France|48.11|-1.68','Reims|France|49.26|4.03','Le Havre|France|49.49|0.11','Grenoble|France|45.19|5.72','Dijon|France|47.32|5.04',
+    'Angers|France|47.47|-0.55','Nîmes|France|43.84|4.36','Clermont-Ferrand|France|45.78|3.09','Tours|France|47.39|0.69','Rouen|France|49.44|1.10',
+    'Biarritz|France|43.48|-1.56','La Rochelle|France|46.16|-1.15','Ajaccio|France|41.92|8.74','Bastia|France|42.70|9.45','Annecy|France|45.90|6.13',
+    'Chamonix|France|45.92|6.87','Avignon|France|43.95|4.81','Cannes|France|43.55|7.01','Saint-Malo|France|48.65|-2.03','Brest|France|48.39|-4.49',
+    'Metz|France|49.12|6.18','Perpignan|France|42.70|2.90','Mont-Saint-Michel|France|48.64|-1.51','Versailles|France|48.80|2.13','Disneyland Paris|France|48.87|2.78',
+    'Trappes|France|48.78|2.00','Orléans|France|47.90|1.91','Caen|France|49.18|-0.37','Limoges|France|45.83|1.26','Poitiers|France|46.58|0.34',
+    'Pau|France|43.30|-0.37','Amiens|France|49.89|2.30','Besançon|France|47.24|6.02','Mulhouse|France|47.75|7.34','Saint-Étienne|France|45.44|4.39',
+    'Toulon|France|43.12|5.93','Nancy|France|48.69|6.18','Le Mans|France|48.00|0.20','Colmar|France|48.08|7.36','Carcassonne|France|43.21|2.35',
+    'Lourdes|France|43.09|-0.05','Pointe-à-Pitre|Guadeloupe|16.24|-61.53','Fort-de-France|Martinique|14.60|-61.07','Saint-Denis|La Réunion|-20.88|55.45','Cayenne|Guyane|4.94|-52.33',
+    'Alger|Algérie|36.75|3.06','Oran|Algérie|35.70|-0.63','Constantine|Algérie|36.37|6.61','Annaba|Algérie|36.90|7.77','Béjaïa|Algérie|36.75|5.08',
+    'Tizi Ouzou|Algérie|36.71|4.05','Tlemcen|Algérie|34.88|-1.32','Sétif|Algérie|36.19|5.41','Tipaza|Algérie|36.59|2.45','Ghardaïa|Algérie|32.49|3.67',
+    'Casablanca|Maroc|33.57|-7.59','Marrakech|Maroc|31.63|-8.01','Rabat|Maroc|34.02|-6.84','Tanger|Maroc|35.77|-5.80','Agadir|Maroc|30.43|-9.60',
+    'Fès|Maroc|34.03|-5.00','Essaouira|Maroc|31.51|-9.77','Tunis|Tunisie|36.81|10.18','Djerba|Tunisie|33.81|10.86','Hammamet|Tunisie|36.40|10.61',
+    'Sousse|Tunisie|35.83|10.64','Le Caire|Égypte|30.04|31.24','Hurghada|Égypte|27.26|33.81','Charm el-Cheikh|Égypte|27.92|34.33',
+    'Londres|Royaume-Uni|51.51|-0.13','Édimbourg|Royaume-Uni|55.95|-3.19','Dublin|Irlande|53.35|-6.26','Amsterdam|Pays-Bas|52.37|4.90','Bruxelles|Belgique|50.85|4.35',
+    'Bruges|Belgique|51.21|3.22','Luxembourg|Luxembourg|49.61|6.13','Berlin|Allemagne|52.52|13.40','Munich|Allemagne|48.14|11.58','Hambourg|Allemagne|53.55|9.99',
+    'Francfort|Allemagne|50.11|8.68','Cologne|Allemagne|50.94|6.96','Vienne|Autriche|48.21|16.37','Prague|Tchéquie|50.08|14.44','Budapest|Hongrie|47.50|19.04',
+    'Varsovie|Pologne|52.23|21.01','Cracovie|Pologne|50.06|19.94','Zurich|Suisse|47.38|8.54','Genève|Suisse|46.20|6.14','Lausanne|Suisse|46.52|6.63',
+    'Rome|Italie|41.90|12.50','Milan|Italie|45.46|9.19','Venise|Italie|45.44|12.32','Florence|Italie|43.77|11.26','Naples|Italie|40.85|14.27',
+    'Turin|Italie|45.07|7.69','Palerme|Italie|38.12|13.36','Catane|Italie|37.50|15.09','Madrid|Espagne|40.42|-3.70','Barcelone|Espagne|41.39|2.17',
+    'Séville|Espagne|37.39|-5.98','Valence|Espagne|39.47|-0.38','Malaga|Espagne|36.72|-4.42','Grenade|Espagne|37.18|-3.60','Palma de Majorque|Espagne|39.57|2.65',
+    'Ibiza|Espagne|38.91|1.43','Tenerife|Espagne|28.47|-16.25','Lisbonne|Portugal|38.72|-9.14','Porto|Portugal|41.15|-8.61','Faro|Portugal|37.02|-7.93',
+    'Funchal|Portugal|32.65|-16.91','Athènes|Grèce|37.98|23.73','Santorin|Grèce|36.39|25.46','Mykonos|Grèce|37.45|25.33','Héraklion|Grèce|35.34|25.14',
+    'Istanbul|Turquie|41.01|28.98','Antalya|Turquie|36.90|30.71','Dubrovnik|Croatie|42.65|18.09','Split|Croatie|43.51|16.44','Zagreb|Croatie|45.81|15.98',
+    'Ljubljana|Slovénie|46.06|14.51','Belgrade|Serbie|44.79|20.45','Sofia|Bulgarie|42.70|23.32','Bucarest|Roumanie|44.43|26.10','Copenhague|Danemark|55.68|12.57',
+    'Stockholm|Suède|59.33|18.07','Oslo|Norvège|59.91|10.75','Helsinki|Finlande|60.17|24.94','Reykjavik|Islande|64.15|-21.94','Tromsø|Norvège|69.65|18.96',
+    'Saint-Pétersbourg|Russie|59.93|30.34','Moscou|Russie|55.76|37.62','Kiev|Ukraine|50.45|30.52','La Valette|Malte|35.90|14.51','Monaco|Monaco|43.74|7.42',
+    'New York|États-Unis|40.71|-74.01','Los Angeles|États-Unis|34.05|-118.24','San Francisco|États-Unis|37.77|-122.42','Las Vegas|États-Unis|36.17|-115.14','Miami|États-Unis|25.76|-80.19',
+    'Chicago|États-Unis|41.88|-87.63','Washington|États-Unis|38.91|-77.04','Boston|États-Unis|42.36|-71.06','Orlando|États-Unis|28.54|-81.38','Seattle|États-Unis|47.61|-122.33',
+    'La Nouvelle-Orléans|États-Unis|29.95|-90.07','Honolulu|États-Unis|21.31|-157.86','Montréal|Canada|45.50|-73.57','Québec|Canada|46.81|-71.21','Toronto|Canada|43.65|-79.38',
+    'Vancouver|Canada|49.28|-123.12','Mexico|Mexique|19.43|-99.13','Cancún|Mexique|21.16|-86.85','La Havane|Cuba|23.11|-82.37','Punta Cana|Rép. dominicaine|18.58|-68.40',
+    'Rio de Janeiro|Brésil|-22.91|-43.17','São Paulo|Brésil|-23.55|-46.63','Buenos Aires|Argentine|-34.60|-58.38','Lima|Pérou|-12.05|-77.04','Cusco|Pérou|-13.53|-71.97',
+    'Bogota|Colombie|4.71|-74.07','Carthagène|Colombie|10.39|-75.48','Santiago|Chili|-33.45|-70.67','Panama|Panama|8.98|-79.52','San José|Costa Rica|9.93|-84.08',
+    'Tokyo|Japon|35.68|139.69','Kyoto|Japon|35.01|135.77','Osaka|Japon|34.69|135.50','Séoul|Corée du Sud|37.57|126.98','Pékin|Chine|39.90|116.41',
+    'Shanghai|Chine|31.23|121.47','Hong Kong|Chine|22.32|114.17','Taipei|Taïwan|25.03|121.57','Bangkok|Thaïlande|13.76|100.50','Phuket|Thaïlande|7.88|98.39',
+    'Chiang Mai|Thaïlande|18.79|98.98','Hanoï|Vietnam|21.03|105.85','Hô Chi Minh-Ville|Vietnam|10.82|106.63','Siem Reap|Cambodge|13.36|103.86','Singapour|Singapour|1.35|103.82',
+    'Kuala Lumpur|Malaisie|3.14|101.69','Bali|Indonésie|-8.65|115.22','Jakarta|Indonésie|-6.21|106.85','Manille|Philippines|14.60|120.98','Delhi|Inde|28.61|77.21',
+    'Mumbai|Inde|19.08|72.88','Goa|Inde|15.50|73.83','Katmandou|Népal|27.72|85.32','Colombo|Sri Lanka|6.93|79.86','Malé|Maldives|4.18|73.51',
+    'Dubaï|Émirats arabes unis|25.20|55.27','Abu Dhabi|Émirats arabes unis|24.45|54.38','Doha|Qatar|25.29|51.53','Riyad|Arabie saoudite|24.71|46.68','La Mecque|Arabie saoudite|21.42|39.83',
+    'Médine|Arabie saoudite|24.47|39.61','Jérusalem|Israël|31.77|35.21','Tel Aviv|Israël|32.09|34.78','Amman|Jordanie|31.95|35.93','Pétra|Jordanie|30.33|35.44',
+    'Beyrouth|Liban|33.89|35.50','Tbilissi|Géorgie|41.72|44.79','Samarcande|Ouzbékistan|39.65|66.96',
+    'Dakar|Sénégal|14.72|-17.47','Abidjan|Côte d’Ivoire|5.36|-4.01','Accra|Ghana|5.60|-0.19','Lagos|Nigeria|6.52|3.38','Nairobi|Kenya|-1.29|36.82',
+    'Zanzibar|Tanzanie|-6.16|39.20','Le Cap|Afrique du Sud|-33.92|18.42','Johannesburg|Afrique du Sud|-26.20|28.05','Port-Louis|Maurice|-20.16|57.50','Antananarivo|Madagascar|-18.88|47.51',
+    'Victoria|Seychelles|-4.62|55.45','Bamako|Mali|12.64|-8.00','Libreville|Gabon|0.39|9.45','Kinshasa|RD Congo|-4.44|15.27','Addis-Abeba|Éthiopie|9.03|38.74',
+    'Sydney|Australie|-33.87|151.21','Melbourne|Australie|-37.81|144.96','Auckland|Nouvelle-Zélande|-36.85|174.76','Queenstown|Nouvelle-Zélande|-45.03|168.66','Papeete|Polynésie française|-17.54|-149.57',
+    'Bora Bora|Polynésie française|-16.50|-151.74','Nouméa|Nouvelle-Calédonie|-22.28|166.46'
+  ].map(function (s) { var p = s.split('|'); return { n: p[0], c: p[1], lat: parseFloat(p[2]), lon: parseFloat(p[3]) }; });
+
+  /* ---------- Utilitaires ---------- */
+  function $(s) { return document.querySelector(s); }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function pad(n) { return String(n).padStart(2, '0'); }
+  function ymd(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+  function parseD(s) { var p = s.split('-').map(Number); return new Date(p[0], p[1] - 1, p[2]); }
+  function norm(s) { return String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
+  var fmtDay = new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+  var fmtMonth = new Intl.DateTimeFormat('fr-FR', { month: 'long', year: 'numeric' });
+  var fmtShort = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short' });
+  var fmtMon3 = new Intl.DateTimeFormat('fr-FR', { month: 'short' });
+  var PIN_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M12 21s7-6.1 7-11a7 7 0 1 0-14 0c0 4.9 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>';
+  var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ---------- État ---------- */
+  var today = ymd(new Date());
+  var state = {
+    events: [], names: { a: '', b: '' }, hasConfig: false, namesLoaded: false, editNames: false,
+    month: new Date(new Date().getFullYear(), new Date().getMonth(), 1), selected: today,
+    view: 'cal', filter: 'all', canWrite: true, dbOn: false, dbChecked: false,
+    pin: null, pickMode: false, pickPt: null, results: null, me: null, ready: false, draft: null, confirmDelete: false
+  };
+  var db = null, evCol = null, cfgDoc = null, FS = null, fbApp = null, unsub = [];
+  var localSeq = 1;
+
+  function nameOf(w) { return w === 'a' ? (state.names.a || 'Moi') : w === 'b' ? (state.names.b || 'L’autre') : 'Ensemble'; }
+  function whoLabel(w) { return w === 'ab' ? 'Nous deux' : nameOf(w); }
+  var PALETTE = [['p1', 'Vert'], ['p2', 'Turquoise'], ['p3', 'Violet'], ['p4', 'Orange'], ['p5', 'Rouge'], ['p6', 'Bleu ciel'], ['p7', 'Marron'], ['p8', 'Gris']];
+  function whoKey(w) { return w === 'a' ? 'a' : w === 'b' ? 'b' : 'both'; }
+  function colorKey(e) { return e && e.color && /^p[1-8]$/.test(e.color) ? e.color : whoKey(e && e.who); }
+  function dotHtml(e) { return '<i class="dot" style="background:var(--' + colorKey(e) + ')"></i>'; }
+  function pickFreeColor(day, exceptId) {
+    var used = {};
+    eventsOn(day).forEach(function (e) { if (e.id !== exceptId) used[colorKey(e)] = 1; });
+    if (!Object.keys(used).length) return '';
+    for (var i = 0; i < PALETTE.length; i++) if (!used[PALETTE[i][0]]) return PALETTE[i][0];
+    return PALETTE[Object.keys(used).length % PALETTE.length][0];
+  }
+  function parseCoords(q) {
+    q = String(q || '');
+    var m = q.match(/!3d(-?\d{1,2}\.\d+)!4d(-?\d{1,3}\.\d+)/) || q.match(/@(-?\d{1,2}\.\d+),\s*(-?\d{1,3}\.\d+)/) ||
+      q.match(/[?&](?:q|query|ll|destination)=(-?\d{1,2}\.\d+)(?:,|%2C)\s*(-?\d{1,3}\.\d+)/i) ||
+      q.match(/^\s*(-?\d{1,2}(?:[.]\d+)?)\s*[,; ]\s*(-?\d{1,3}(?:[.]\d+)?)\s*$/);
+    if (!m) return null;
+    var lat = parseFloat(m[1]), lon = parseFloat(m[2]);
+    if (!isFinite(lat) || !isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) return null;
+    return { lat: Math.round(lat * 1e5) / 1e5, lon: Math.round(lon * 1e5) / 1e5 };
+  }
+  function sortEv(list) {
+    return list.slice().sort(function (x, y) {
+      return (x.start + (x.time || '')).localeCompare(y.start + (y.time || '')) || String(x.title).localeCompare(String(y.title));
+    });
+  }
+  function endOf(e) { return e.end && e.end >= e.start ? e.end : e.start; }
+  function eventsOn(day) {
+    return sortEv(state.events.filter(function (e) { return e.start <= day && day <= endOf(e); }));
+  }
+  function daysBetween(a, b) { return Math.round((parseD(b) - parseD(a)) / 86400000); }
+
+  /* ---------- Rendu : en-tête ---------- */
+  function renderHeader() {
+    $('#legend').innerHTML =
+      '<span><i class="dot a"></i>' + esc(nameOf('a')) + '</span>' +
+      '<span><i class="dot b"></i>' + esc(nameOf('b')) + '</span>' +
+      '<span><i class="dot ab"></i>Ensemble</span>';
+    var up = sortEv(state.events.filter(function (e) { return endOf(e) >= today; }))[0];
+    var el = $('#next');
+    if (!up) { el.textContent = state.events.length ? 'Plus rien à venir.' : 'Rien de prévu pour le moment.'; return; }
+    var d = up.start <= today ? 0 : daysBetween(today, up.start);
+    var when = up.start <= today ? 'en cours' : d === 1 ? 'demain' : 'dans ' + d + ' jours';
+    el.innerHTML = 'Prochain : <b>' + esc(up.title) + '</b>, ' + when + '.';
+  }
+
+  function renderToday() {
+    var box = $('#todayBox'), evs = eventsOn(today);
+    if (!evs.length) { box.hidden = true; box.innerHTML = ''; return; }
+    box.hidden = false; box.className = 'todaybox';
+    box.innerHTML = '<h2>' + (evs.length > 1 ? 'C’est aujourd’hui : ' + evs.length + ' événements !' : 'C’est aujourd’hui !') + '</h2>' + evs.map(function (e) {
+      var ps = e.place && typeof e.place.lat === 'number';
+      return '<div class="trow"><div>' + dotHtml(e) + '<b>' + esc(e.title) + '</b>' + (e.time ? '<small>' + esc(e.time) + '</small>' : '') + '</div>' +
+        (ps && state.me ? '<span class="dist">' + esc(distLabel(e.place)) + '</span>' : '') +
+        (ps ? '<a class="btn small" href="' + esc(dirUrl(e.place.lat, e.place.lon)) + '" target="_blank" rel="noopener">Itinéraire</a>' : '') + '</div>';
+    }).join('') + (!state.me && evs.some(function (e) { return e.place && typeof e.place.lat === 'number'; }) ? '<button class="btn small" type="button" id="todayLocate" style="align-self:flex-start">Où suis-je par rapport au lieu ?</button>' : '');
+  }
+
+  function renderNotice() {
+    var n = $('#notice'), html = '';
+    if (state.editNames) {
+      html = '<div class="notice"><h2>Vos prénoms</h2>' +
+        '<p>Les prénoms servent à colorer chaque événement et à envoyer les rappels à la bonne personne.</p>' +
+        '<form class="names-form" id="namesForm">' +
+        '<input class="input" id="nameA" maxlength="24" placeholder="Premier prénom" aria-label="Premier prénom" value="' + esc(state.names.a) + '">' +
+        '<input class="input" id="nameB" maxlength="24" placeholder="Second prénom" aria-label="Second prénom" value="' + esc(state.names.b) + '">' +
+        '<div class="full"><button class="btn primary" type="submit">Enregistrer</button><button class="btn" type="button" id="namesCancel">Fermer</button></div></form></div>';
+    } else if (state.ready && VAPID_KEY && !notifOn() && !lsGet('nc.notifSkip')) {
+      if (isIOS() && !isStandalone()) {
+        html = '<div class="notice"><h2>Recevoir les rappels</h2><p>Sur iPhone, les rappels marchent quand l’appli est sur l’écran d’accueil :</p>' +
+          '<ol class="steps"><li>Touchez le bouton Partager de Safari (carré avec une flèche).</li><li>Choisissez « Sur l’écran d’accueil », puis « Ajouter ».</li><li>Ouvrez l’appli depuis la nouvelle icône et activez les rappels.</li></ol>' +
+          '<div class="actions"><button class="btn small" type="button" data-n="skip">Plus tard</button></div></div>';
+      } else if (notifSupported()) {
+        html = '<div class="notice"><h2>Recevoir les rappels</h2><p>La veille au soir, le matin du jour J, et une heure avant quand l’événement a une heure.</p>' +
+          '<div class="actions"><button class="btn primary small" type="button" data-n="on">Activer les rappels</button><button class="btn small" type="button" data-n="skip">Plus tard</button></div></div>';
+      }
+    }
+    n.innerHTML = html;
+    n.hidden = !html;
+  }
+
+  /* ---------- Rendu : calendrier ---------- */
+  function renderCalendar() {
+    var y = state.month.getFullYear(), m = state.month.getMonth();
+    $('#monthTitle').textContent = fmtMonth.format(state.month);
+    var offset = (new Date(y, m, 1).getDay() + 6) % 7;
+    var html = '', monthCount = 0;
+    for (var i = 0; i < 42; i++) {
+      var d = new Date(y, m, 1 - offset + i), s = ymd(d);
+      var evs = eventsOn(s);
+      var inMonth = d.getMonth() === m;
+      if (inMonth && evs.length) monthCount += 0;
+      var seen = {}, dots = '';
+      evs.forEach(function (e) { var ck = colorKey(e); if (!seen[ck] && Object.keys(seen).length < 4) { seen[ck] = 1; dots += '<i style="background:var(--' + ck + ')"></i>'; } });
+      var label = fmtDay.format(d) + (evs.length ? ', ' + evs.length + (evs.length > 1 ? ' événements' : ' événement') : '');
+      html += '<button type="button" class="day' + (inMonth ? '' : ' out') + (s === today ? ' today' : '') + (s === state.selected ? ' sel' : '') +
+        '" data-date="' + s + '" aria-label="' + esc(label) + '" aria-pressed="' + (s === state.selected) + '"><span class="num">' + d.getDate() + '</span><span class="dots">' + dots + '</span></button>';
+    }
+    $('#days').innerHTML = html;
+    var first = ymd(new Date(y, m, 1)), last = ymd(new Date(y, m + 1, 0));
+    var inM = state.events.filter(function (e) { return e.start <= last && endOf(e) >= first; }).length;
+    $('#monthCount').textContent = inM ? inM + (inM > 1 ? ' événements ce mois-ci' : ' événement ce mois-ci') : 'Rien ce mois-ci';
+  }
+
+  function evCard(e, showDate) {
+    var ps = e.place && typeof e.place.lat === 'number';
+    var when = showDate ? fmtShort.format(parseD(e.start)) : (e.time || 'Journée');
+    var range = e.end && e.end > e.start ? '<div class="meta">jusqu’au ' + esc(fmtShort.format(parseD(e.end))) + '</div>' : '';
+    return '<div class="ev" data-id="' + esc(e.id) + '" data-act="edit" role="button" tabindex="0">' +
+      '<div class="when">' + esc(when) + '</div>' +
+      '<div class="main"><div class="title">' + dotHtml(e) + '<span class="t">' + esc(e.title) + '</span></div>' +
+      '<div class="meta"><span>' + esc(whoLabel(e.who)) + '</span>' + (ps ? '<span>·</span>' + PIN_SVG + '<span>' + esc(e.place.name) + '</span><a data-act="link" href="' + esc(dirUrl(e.place.lat, e.place.lon)) + '" target="_blank" rel="noopener">Itinéraire</a>' : '') + '</div>' + range +
+      (e.note ? '<div class="note">' + esc(e.note) + '</div>' : '') + '</div>' +
+      (ps ? '<button type="button" class="btn small go" data-id="' + esc(e.id) + '" data-act="show">Globe</button>' : '<span></span>') + '</div>';
+  }
+
+  function renderDay() {
+    var d = parseD(state.selected), evs = eventsOn(state.selected);
+    $('#dayTitle').textContent = state.selected === today ? 'Aujourd’hui' : fmtDay.format(d);
+    $('#dayCount').textContent = evs.length ? evs.length + (evs.length > 1 ? ' événements' : ' événement') : '';
+    var box = $('#dayList');
+    if (!evs.length) {
+      var canAdd = true;
+      box.innerHTML = '<div class="empty"><p>' + (state.events.length ? 'Rien de prévu ce jour-là.' : 'Votre calendrier est vide. Ajoutez votre premier événement avec une adresse pour le voir apparaître sur le globe.') + '</p>' +
+        (canAdd ? '<button class="btn small" type="button" data-act="add">Ajouter un événement</button>' : '') + '</div>';
+    } else box.innerHTML = evs.map(function (e) { return evCard(e, false); }).join('');
+  }
+
+  function renderUpcoming() {
+    var up = sortEv(state.events.filter(function (e) { return endOf(e) >= today; })).slice(0, 4);
+    var box = $('#upList');
+    if (!up.length) { box.innerHTML = '<p class="hint">Les prochains événements apparaîtront ici.</p>'; return; }
+    box.innerHTML = up.map(function (e) {
+      var d = parseD(e.start);
+      return '<button type="button" class="up" data-id="' + esc(e.id) + '" data-act="jump"><span class="chip"><b>' + d.getDate() + '</b><small>' + esc(fmtMon3.format(d).replace('.', '')) + '</small></span>' +
+        '<span><span class="t">' + dotHtml(e) + '' + esc(e.title) + '</span><span class="m">' + esc(e.place && e.place.name ? e.place.name : whoLabel(e.who)) + '</span></span></button>';
+    }).join('');
+  }
+
+  function renderAll() {
+    renderHeader(); renderToday(); renderNotice(); renderCalendar(); renderDay(); renderUpcoming(); renderPinCard();
+    G.sync();
+  }
+
+  /* ---------- Globe ---------- */
+  var G = {
+    canvas: null, ctx: null, size: 0, dpr: 1, proj: null, path: null, grat: null,
+    rot: [-10, -25], k: 1, land: null, landState: 'loading', theme: null, running: false, last: 0,
+    spin: false, groups: [], hits: [], fly: null, focusKeys: {}
+  };
+
+  function readTheme() {
+    var cs = getComputedStyle(document.documentElement);
+    function g(n) { return cs.getPropertyValue(n).trim(); }
+    G.theme = { bg: g('--bg'), surface: g('--surface'), ocean: g('--ocean'), land: g('--land'), coast: g('--coast'), grid: g('--grid'), night: g('--night'), ink: g('--ink'), muted: g('--muted'), a: g('--a'), b: g('--b'), both: g('--both') };
+    PALETTE.forEach(function (p) { G.theme[p[0]] = g('--' + p[0]); });
+  }
+  function sunPoint(date) {
+    var start = Date.UTC(date.getUTCFullYear(), 0, 0), d = (date.getTime() - start) / 86400000;
+    var g = 2 * Math.PI / 365 * (d - 1 + (date.getUTCHours() - 12) / 24);
+    var eqt = 229.18 * (0.000075 + 0.001868 * Math.cos(g) - 0.032077 * Math.sin(g) - 0.014615 * Math.cos(2 * g) - 0.040849 * Math.sin(2 * g));
+    var decl = 0.006918 - 0.399912 * Math.cos(g) + 0.070257 * Math.sin(g) - 0.006758 * Math.cos(2 * g) + 0.000907 * Math.sin(2 * g) - 0.002697 * Math.cos(3 * g) + 0.00148 * Math.sin(3 * g);
+    var utcMin = date.getUTCHours() * 60 + date.getUTCMinutes() + date.getUTCSeconds() / 60;
+    var lon = -(utcMin + eqt - 720) / 4;
+    return [((lon + 540) % 360) - 180, decl * 180 / Math.PI];
+  }
+  function daylight(lat, lon) {
+    var el = 90 - d3.geoDistance([lon, lat], sunPoint(new Date())) * 180 / Math.PI;
+    if (el > 0) return { t: 'Il fait jour là-bas', c: 'var(--both)' };
+    if (el > -6) return { t: 'Crépuscule là-bas', c: 'var(--b)' };
+    return { t: 'Il fait nuit là-bas', c: 'var(--a)' };
+  }
+  function mapUrl(lat, lon) { return 'https://www.google.com/maps/search/?api=1&query=' + lat + '%2C' + lon; }
+  function dirUrl(lat, lon) { return 'https://www.google.com/maps/dir/?api=1&destination=' + lat + '%2C' + lon; }
+  function cityGuess(q) {
+    var n = norm(q), best = null;
+    CITY_DATA.forEach(function (c) { var cn = norm(c.n); if (cn.length >= 4 && n.indexOf(cn) !== -1 && (!best || cn.length > norm(best.n).length)) best = c; });
+    return best ? { name: q.slice(0, 60), lat: best.lat, lon: best.lon } : null;
+  }
+  function pinKey(p) { return p.lat.toFixed(4) + ',' + p.lon.toFixed(4); }
+  function colorFor(k) { var t = G.theme; return t[k] || t.both; }
+
+  function filteredEvents() {
+    var y = state.month.getFullYear(), m = state.month.getMonth(), first = ymd(new Date(y, m, 1)), last = ymd(new Date(y, m + 1, 0));
+    return state.events.filter(function (e) {
+      if (!(e.place && typeof e.place.lat === 'number' && typeof e.place.lon === 'number')) return false;
+      if (state.filter === 'upcoming') return endOf(e) >= today;
+      if (state.filter === 'month') return e.start <= last && endOf(e) >= first;
+      return true;
+    });
+  }
+
+  G.sync = function () {
+    if (!G.canvas) return;
+    var evs = sortEv(filteredEvents()), map = {}, groups = [];
+    evs.forEach(function (e) {
+      var k = pinKey(e.place);
+      if (!map[k]) { map[k] = { key: k, lat: e.place.lat, lon: e.place.lon, name: e.place.name, events: [], colors: [], past: true }; groups.push(map[k]); }
+      var g = map[k];
+      g.events.push(e);
+      var ck = colorKey(e); if (g.colors.indexOf(ck) < 0) g.colors.push(ck);
+      if (endOf(e) >= today) g.past = false;
+    });
+    G.groups = groups;
+    var allPl = state.events.filter(function (e) { return e.place && typeof e.place.lat === 'number'; }), uniq = {};
+    allPl.forEach(function (e) { uniq[pinKey(e.place)] = 1; });
+    var nu = Object.keys(uniq).length;
+    $('#globeStat').textContent = allPl.length ? allPl.length + (allPl.length > 1 ? ' événements' : ' événement') + ' sur le globe · ' + nu + (nu > 1 ? ' lieux' : ' lieu') : 'Chaque événement avec une adresse ajoute un point.';
+    var fk = {};
+    eventsOn(state.selected).forEach(function (e) { if (e.place && typeof e.place.lat === 'number') fk[pinKey(e.place)] = 1; });
+    if (state.pin) fk[state.pin] = 1;
+    G.focusKeys = fk;
+    G.spin = !state.events.length && !state.pickMode;
+    var note = $('#globeNote');
+    if (G.landState === 'failed') { note.hidden = false; note.textContent = 'Le fond de carte n’a pas pu se charger. Vos lieux restent placés sur la sphère.'; }
+    else if (!groups.length && state.events.length) { note.hidden = false; note.textContent = 'Aucun lieu à afficher avec ce filtre.'; }
+    else note.hidden = true;
+    G.kick();
+  };
+
+  G.resize = function () {
+    var wrap = $('#globeWrap'), w = Math.round(wrap.getBoundingClientRect().width);
+    if (w < 20) { G.size = 0; return; }
+    G.dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+    G.size = w;
+    G.canvas.width = Math.round(w * G.dpr); G.canvas.height = Math.round(w * G.dpr);
+    G.ctx.setTransform(G.dpr, 0, 0, G.dpr, 0, 0);
+    G.draw(performance.now());
+  };
+
+  function needLoop() {
+    if (!G.size || document.visibilityState === 'hidden') return false;
+    if (G.fly) return true;
+    if (G.spin && !reduceMotion) return true;
+    if (!reduceMotion && (Object.keys(G.focusKeys).length || state.me)) return true;
+    return false;
+  }
+  G.kick = function () {
+    if (!G.size) { G.resize(); }
+    if (G.size) G.draw(performance.now());
+    if (G.running || !needLoop()) return;
+    G.running = true; G.last = 0;
+    requestAnimationFrame(G.tick);
+  };
+  G.tick = function (now) {
+    if (!needLoop()) { G.running = false; G.draw(now); return; }
+    var dt = G.last ? Math.min(now - G.last, 64) : 16;
+    if (G.fly) {
+      var f = G.fly, t = Math.min(1, (now - f.t0) / f.dur), e = 1 - Math.pow(1 - t, 3);
+      G.rot = [f.from[0] + f.dl * e, f.from[1] + (f.to[1] - f.from[1]) * e];
+      G.k = f.k0 + (f.k1 - f.k0) * e;
+      if (t >= 1) G.fly = null;
+    } else if (G.spin) {
+      G.rot = [G.rot[0] + dt * 0.012, G.rot[1]];
+    }
+    if (G.last && now - G.last < 30 && !G.fly && !G.spin) { requestAnimationFrame(G.tick); return; }
+    G.last = now;
+    G.draw(now);
+    requestAnimationFrame(G.tick);
+  };
+
+  G.flyTo = function (lon, lat, k) {
+    var to = [-lon, Math.max(-70, Math.min(70, -lat))], from = G.rot.slice();
+    var dl = ((to[0] - from[0] + 540) % 360) - 180;
+    var k1 = k || G.k;
+    G.spin = false;
+    if (reduceMotion || !G.size) { G.rot = [from[0] + dl, to[1]]; G.k = k1; G.fly = null; G.kick(); return; }
+    G.fly = { from: from, to: to, dl: dl, t0: performance.now(), dur: 950, k0: G.k, k1: k1 };
+    G.kick();
+  };
+
+  G.draw = function (now) {
+    var ctx = G.ctx; if (!ctx || !G.size) return;
+    if (!G.theme) readTheme();
+    var th = G.theme, s = G.size, R = s / 2 * 0.93 * G.k;
+    G.proj.translate([s / 2, s / 2]).scale(R).rotate([G.rot[0], G.rot[1]]);
+    var path = G.path;
+    ctx.clearRect(0, 0, s, s);
+    ctx.beginPath(); path({ type: 'Sphere' }); ctx.fillStyle = th.ocean; ctx.fill();
+    ctx.beginPath(); path(G.grat); ctx.strokeStyle = th.grid; ctx.lineWidth = 0.6; ctx.stroke();
+    if (G.land) {
+      ctx.beginPath(); path(G.land); ctx.fillStyle = th.land; ctx.fill();
+      ctx.strokeStyle = th.coast; ctx.lineWidth = 0.7; ctx.lineJoin = 'round'; ctx.stroke();
+    }
+    var center = [-G.rot[0], -G.rot[1]];
+    var sun = sunPoint(new Date()), anti = [((sun[0] + 360) % 360) - 180, -sun[1]];
+    [90, 95, 101].forEach(function (rad) {
+      ctx.beginPath(); path(d3.geoCircle().center(anti).radius(rad).precision(3)()); ctx.fillStyle = th.night; ctx.fill();
+    });
+    // Noms de villes quand on zoome
+    if (G.k >= 2.2) {
+      ctx.font = '500 11px Figtree, system-ui, sans-serif'; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+      var occ = [];
+      CITY_DATA.forEach(function (c) {
+        if (occ.length > 70 || d3.geoDistance([c.lon, c.lat], center) > Math.PI / 2 - 0.05) return;
+        var p = G.proj([c.lon, c.lat]); if (!p || p[0] < 4 || p[0] > s - 4 || p[1] < 4 || p[1] > s - 4) return;
+        var w = ctx.measureText(c.n).width + 12, r = { x: p[0] - 4, y: p[1] - 8, w: w, h: 16 };
+        for (var j = 0; j < occ.length; j++) { var o = occ[j]; if (r.x < o.x + o.w && r.x + r.w > o.x && r.y < o.y + o.h && r.y + r.h > o.y) return; }
+        occ.push(r);
+        ctx.beginPath(); ctx.arc(p[0], p[1], 2, 0, 6.2832); ctx.fillStyle = th.muted; ctx.fill();
+        ctx.lineWidth = 3; ctx.strokeStyle = th.ocean; ctx.strokeText(c.n, p[0] + 6, p[1]); ctx.fillStyle = th.muted; ctx.fillText(c.n, p[0] + 6, p[1]);
+      });
+    }
+    // Trajets entre lieux successifs
+    var ordered = G.groups.slice().sort(function (x, y) { return x.events[0].start.localeCompare(y.events[0].start); });
+    if (ordered.length > 1) {
+      ctx.save(); ctx.setLineDash([2, 6]); ctx.lineCap = 'round'; ctx.strokeStyle = th.muted; ctx.globalAlpha = 0.75; ctx.lineWidth = 1.4;
+      for (var i = 1; i < ordered.length; i++) {
+        ctx.beginPath(); path({ type: 'LineString', coordinates: [[ordered[i - 1].lon, ordered[i - 1].lat], [ordered[i].lon, ordered[i].lat]] }); ctx.stroke();
+      }
+      ctx.restore();
+    }
+    // Relief léger
+    var grd = ctx.createRadialGradient(s / 2 - R * 0.35, s / 2 - R * 0.4, R * 0.1, s / 2, s / 2, R * 1.02);
+    grd.addColorStop(0, 'rgba(255,255,255,0.14)'); grd.addColorStop(0.55, 'rgba(255,255,255,0)'); grd.addColorStop(1, 'rgba(0,0,0,0.16)');
+    ctx.beginPath(); path({ type: 'Sphere' }); ctx.fillStyle = grd; ctx.fill();
+    ctx.beginPath(); path({ type: 'Sphere' }); ctx.strokeStyle = th.coast; ctx.lineWidth = 1; ctx.stroke();
+    // Repères
+    G.hits = [];
+    var pulse = (Math.sin(now / 380) + 1) / 2;
+    var visible = [];
+    G.groups.forEach(function (g) {
+      if (d3.geoDistance([g.lon, g.lat], center) > Math.PI / 2 - 0.03) return;
+      var p = G.proj([g.lon, g.lat]); if (!p) return;
+      visible.push({ g: g, x: p[0], y: p[1] });
+    });
+    visible.forEach(function (v) {
+      var g = v.g, col = colorFor(g.colors[0]), focus = !!G.focusKeys[g.key], r = focus ? 7.5 : 6;
+      G.hits.push(v);
+      ctx.save();
+      ctx.globalAlpha = g.past && !focus ? 0.8 : 1;
+      if (focus && !reduceMotion) {
+        ctx.beginPath(); ctx.arc(v.x, v.y, r + 5 + pulse * 9, 0, 6.2832); ctx.strokeStyle = col; ctx.globalAlpha = 0.55 * (1 - pulse); ctx.lineWidth = 2; ctx.stroke();
+        ctx.globalAlpha = 1;
+      }
+      ctx.beginPath(); ctx.arc(v.x, v.y, r + 4, 0, 6.2832); ctx.fillStyle = col; ctx.globalAlpha = (g.past && !focus ? 0.8 : 1) * 0.22; ctx.fill();
+      ctx.globalAlpha = g.past && !focus ? 0.8 : 1;
+      if (g.colors.length < 2) { ctx.beginPath(); ctx.arc(v.x, v.y, r, 0, 6.2832); ctx.fillStyle = col; ctx.fill(); }
+      else {
+        var n = g.colors.length, a0 = -Math.PI / 2;
+        g.colors.forEach(function (ck, i) {
+          ctx.beginPath(); ctx.moveTo(v.x, v.y); ctx.arc(v.x, v.y, r, a0 + i * 2 * Math.PI / n, a0 + (i + 1) * 2 * Math.PI / n); ctx.closePath();
+          ctx.fillStyle = colorFor(ck); ctx.fill();
+        });
+      }
+      ctx.beginPath(); ctx.arc(v.x, v.y, r, 0, 6.2832); ctx.lineWidth = 2.2; ctx.strokeStyle = th.surface; ctx.stroke();
+      ctx.restore();
+    });
+    var showAll = visible.length <= 6 || G.k > 1.6;
+    ctx.font = '600 12.5px Figtree, system-ui, sans-serif'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round';
+    visible.forEach(function (v) {
+      if (!showAll && !G.focusKeys[v.g.key]) return;
+      var txt = v.g.name.length > 26 ? v.g.name.slice(0, 25) + '…' : v.g.name, right = v.x < s * 0.68, tx = right ? v.x + 13 : v.x - 13;
+      ctx.textAlign = right ? 'left' : 'right';
+      ctx.lineWidth = 4; ctx.strokeStyle = th.bg; ctx.strokeText(txt, tx, v.y);
+      ctx.fillStyle = th.ink; ctx.fillText(txt, tx, v.y);
+    });
+    // Ma position
+    if (state.me && d3.geoDistance([state.me.lon, state.me.lat], center) < Math.PI / 2 - 0.01) {
+      var mp = G.proj([state.me.lon, state.me.lat]);
+      if (mp) {
+        var mpulse = reduceMotion ? 0.5 : (Math.sin(now / 500) + 1) / 2;
+        ctx.save();
+        ctx.beginPath(); ctx.arc(mp[0], mp[1], 9 + mpulse * 6, 0, 6.2832); ctx.fillStyle = '#2F80ED'; ctx.globalAlpha = 0.18; ctx.fill();
+        ctx.globalAlpha = 1; ctx.beginPath(); ctx.arc(mp[0], mp[1], 6.5, 0, 6.2832); ctx.fillStyle = '#2F80ED'; ctx.fill();
+        ctx.lineWidth = 2.5; ctx.strokeStyle = '#FFFFFF'; ctx.stroke();
+        ctx.font = '700 12px Figtree, system-ui, sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+        ctx.lineWidth = 4; ctx.strokeStyle = th.bg; ctx.strokeText('Moi', mp[0] + 12, mp[1]); ctx.fillStyle = th.ink; ctx.fillText('Moi', mp[0] + 12, mp[1]);
+        ctx.restore();
+      }
+    }
+    // Point en cours de placement
+    if (state.pickMode && state.pickPt && d3.geoDistance([state.pickPt.lon, state.pickPt.lat], center) < Math.PI / 2 - 0.01) {
+      var pp = G.proj([state.pickPt.lon, state.pickPt.lat]);
+      if (pp) {
+        ctx.save();
+        ctx.strokeStyle = th.ink; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.moveTo(pp[0] - 16, pp[1]); ctx.lineTo(pp[0] - 6, pp[1]); ctx.moveTo(pp[0] + 6, pp[1]); ctx.lineTo(pp[0] + 16, pp[1]);
+        ctx.moveTo(pp[0], pp[1] - 16); ctx.lineTo(pp[0], pp[1] - 6); ctx.moveTo(pp[0], pp[1] + 6); ctx.lineTo(pp[0], pp[1] + 16); ctx.stroke();
+        ctx.beginPath(); ctx.arc(pp[0], pp[1], 4.5, 0, 6.2832); ctx.fillStyle = th.ink; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = th.surface; ctx.stroke();
+        ctx.restore();
+      }
+    }
+  };
+
+  function hitAt(x, y) {
+    var best = null, bd = 22;
+    G.hits.forEach(function (h) { var d = Math.hypot(h.x - x, h.y - y); if (d < bd) { bd = d; best = h; } });
+    return best;
+  }
+
+  function initGlobe() {
+    G.canvas = $('#globe'); G.ctx = G.canvas.getContext('2d');
+    G.proj = d3.geoOrthographic().clipAngle(90).precision(0.5);
+    G.path = d3.geoPath(G.proj, G.ctx);
+    G.grat = d3.geoGraticule10();
+    readTheme();
+    var pts = {}, startRot = null, startK = 1, startDist = 0, moved = false, downXY = null;
+    var cv = G.canvas;
+    function rel(ev) { var r = cv.getBoundingClientRect(); return [ev.clientX - r.left, ev.clientY - r.top]; }
+    cv.addEventListener('pointerdown', function (ev) {
+      cv.setPointerCapture(ev.pointerId);
+      pts[ev.pointerId] = rel(ev);
+      G.spin = false; G.fly = null;
+      var ids = Object.keys(pts);
+      if (ids.length === 1) { moved = false; downXY = rel(ev); startRot = G.rot.slice(); cv.classList.add('drag'); }
+      if (ids.length === 2) { var a = pts[ids[0]], b = pts[ids[1]]; startDist = Math.hypot(a[0] - b[0], a[1] - b[1]); startK = G.k; moved = true; }
+    });
+    cv.addEventListener('pointermove', function (ev) {
+      if (!pts[ev.pointerId]) return;
+      var prev = pts[ev.pointerId], cur = rel(ev);
+      pts[ev.pointerId] = cur;
+      var ids = Object.keys(pts);
+      if (ids.length === 1) {
+        if (!moved && Math.hypot(cur[0] - downXY[0], cur[1] - downXY[1]) > 6) moved = true;
+        if (moved) {
+          var sc = G.proj.scale() || 200, f = 180 / Math.PI / sc;
+          G.rot = [G.rot[0] + (cur[0] - prev[0]) * f, Math.max(-80, Math.min(80, G.rot[1] - (cur[1] - prev[1]) * f))];
+          G.draw(performance.now());
+        }
+      } else if (ids.length === 2 && startDist > 0) {
+        var a = pts[ids[0]], b = pts[ids[1]];
+        G.k = Math.max(0.8, Math.min(40, startK * Math.hypot(a[0] - b[0], a[1] - b[1]) / startDist));
+        G.draw(performance.now());
+      }
+    });
+    function up(ev) {
+      if (!pts[ev.pointerId]) return;
+      var wasSingle = Object.keys(pts).length === 1;
+      delete pts[ev.pointerId];
+      cv.classList.remove('drag');
+      if (wasSingle && !moved) onTap(rel(ev));
+      if (Object.keys(pts).length === 1) { var id = Object.keys(pts)[0]; downXY = pts[id]; moved = true; }
+      G.kick();
+    }
+    cv.addEventListener('pointerup', up);
+    cv.addEventListener('pointercancel', up);
+    cv.addEventListener('wheel', function (ev) {
+      ev.preventDefault();
+      G.k = Math.max(0.8, Math.min(40, G.k * Math.exp(-ev.deltaY * 0.0014)));
+      G.spin = false; G.draw(performance.now()); G.kick();
+    }, { passive: false });
+
+    function zoom(f) { G.spin = false; G.k = Math.max(0.8, Math.min(40, G.k * f)); G.draw(performance.now()); G.kick(); }
+    $('#zIn').addEventListener('click', function () { zoom(1.4); });
+    $('#zOut').addEventListener('click', function () { zoom(1 / 1.4); });
+    $('#zHome').addEventListener('click', function () { flyHome(); });
+
+    if (window.ResizeObserver) new ResizeObserver(function () { G.resize(); }).observe($('#globeWrap'));
+    window.addEventListener('resize', function () { G.resize(); });
+    document.addEventListener('visibilitychange', function () { G.kick(); });
+    if (window.matchMedia) {
+      var mq = window.matchMedia('(prefers-color-scheme: dark)');
+      var onTheme = function () { readTheme(); G.draw(performance.now()); };
+      if (mq.addEventListener) mq.addEventListener('change', onTheme);
+    }
+    new MutationObserver(function () { readTheme(); G.draw(performance.now()); }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+    G.resize();
+  }
+
+  function onTap(xy) {
+    if (state.pickMode) {
+      var s = G.size, R = G.proj.scale();
+      if (Math.hypot(xy[0] - s / 2, xy[1] - s / 2) > R) return;
+      var ll = G.proj.invert(xy);
+      if (!ll || !isFinite(ll[0]) || !isFinite(ll[1])) return;
+      state.pickPt = { lat: Math.round(ll[1] * 1e5) / 1e5, lon: Math.round(ll[0] * 1e5) / 1e5 };
+      renderPickBar(); G.draw(performance.now());
+      return;
+    }
+    var h = hitAt(xy[0], xy[1]);
+    state.pin = h ? h.g.key : null;
+    renderPinCard(); G.sync();
+    if (h) G.flyTo(h.g.lon, h.g.lat, Math.max(G.k, 1.5));
+  }
+
+  function renderPinCard() {
+    var box = $('#pinCard'), g = null;
+    if (state.pin) G.groups.forEach(function (x) { if (x.key === state.pin) g = x; });
+    if (!g) { box.hidden = true; box.innerHTML = ''; return; }
+    box.hidden = false;
+    box.className = 'card pincard';
+    box.innerHTML = '<h3><span>' + esc(g.name) + '</span><button class="icon-btn" type="button" data-act="closepin" aria-label="Fermer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></h3>' +
+      g.events.map(function (e) {
+        return '<div class="row"><div><b>' + esc(e.title) + '</b><small>' + esc(fmtShort.format(parseD(e.start))) + (e.end && e.end > e.start ? ' → ' + esc(fmtShort.format(parseD(e.end))) : '') + ' · ' + esc(whoLabel(e.who)) + '</small></div>' +
+          '<button class="btn small" type="button" data-act="jump" data-id="' + esc(e.id) + '">Calendrier</button></div>';
+      }).join('') +
+      (state.me ? '<div class="row"><span class="sun">Vous êtes ' + esc(distLabel(g)) + '</span></div>' : '') +
+      '<div class="row"><span class="sun"><i style="background:' + daylight(g.lat, g.lon).c + '"></i>' + esc(daylight(g.lat, g.lon).t) + '</span>' +
+      '<span style="display:flex;gap:6px"><a class="btn small maplink" data-act="link" href="' + esc(mapUrl(g.lat, g.lon)) + '" target="_blank" rel="noopener">Plan</a><a class="btn small maplink" data-act="link" href="' + esc(dirUrl(g.lat, g.lon)) + '" target="_blank" rel="noopener">Itinéraire</a></span></div>';
+  }
+
+  function flyHome() {
+    var up = sortEv(state.events.filter(function (e) { return e.place && typeof e.place.lat === 'number' && endOf(e) >= today; }))[0] ||
+      sortEv(state.events.filter(function (e) { return e.place && typeof e.place.lat === 'number'; })).pop();
+    if (up) G.flyTo(up.place.lon, up.place.lat, 1.3);
+    else G.flyTo(2.35, 30, 1);
+  }
+
+  /* ---------- Fond de carte ---------- */
+  function decodeRing(str, off) {
+    var out = [], px = off[0], py = off[1];
+    for (var i = 0; i < str.length; i += 2) {
+      var x = str.charCodeAt(i) - 64, y = str.charCodeAt(i + 1) - 64;
+      x = (x >> 1) ^ (-(x & 1)); y = (y >> 1) ^ (-(y & 1));
+      x += px; y += py; px = x; py = y;
+      out.push([x / 1024, y / 1024]);
+    }
+    return out;
+  }
+  function buildLand(world) {
+    var polys = [];
+    (world.features || []).forEach(function (f) {
+      var g = f.geometry; if (!g) return;
+      var enc = g.encodeOffsets;
+      function ring(r, o) { return typeof r === 'string' ? decodeRing(r, o || [0, 0]) : r; }
+      if (g.type === 'Polygon') polys.push(g.coordinates.map(function (r, i) { return ring(r, enc && enc[i]); }));
+      else if (g.type === 'MultiPolygon') g.coordinates.forEach(function (p, pi) { polys.push(p.map(function (r, ri) { return ring(r, enc && enc[pi] && enc[pi][ri]); })); });
+    });
+    var TWO_PI = 2 * Math.PI;
+    polys = polys.map(function (poly) {
+      return poly.map(function (r, i) {
+        if (!r || r.length < 3) return r;
+        var a = r[0], b = r[r.length - 1];
+        if (a[0] !== b[0] || a[1] !== b[1]) r = r.concat([[a[0], a[1]]]);
+        var area = d3.geoArea({ type: 'Polygon', coordinates: [r] });
+        if (i === 0 ? area > TWO_PI : area < TWO_PI) r = r.slice().reverse();
+        return r;
+      }).filter(function (r) { return r && r.length >= 4; });
+    }).filter(function (p) { return p.length; });
+    return { type: 'MultiPolygon', coordinates: polys };
+  }
+  function loadWorld() {
+    var urls = ['https://cdn.jsdelivr.net/npm/echarts@4.9.0/map/js/world.js', 'https://unpkg.com/echarts@4.9.0/map/js/world.js'];
+    var captured = null;
+    window.echarts = { registerMap: function (name, geo) { captured = geo; } };
+    function attempt(i) {
+      if (i >= urls.length) { G.landState = 'failed'; G.sync(); return; }
+      var sc = document.createElement('script');
+      sc.src = urls[i];
+      sc.onload = function () {
+        try {
+          if (!captured) throw new Error('vide');
+          G.land = buildLand(captured); G.landState = 'ok'; captured = null;
+          delete window.echarts;
+          G.sync(); G.draw(performance.now());
+        } catch (err) { attempt(i + 1); }
+      };
+      sc.onerror = function () { attempt(i + 1); };
+      document.head.appendChild(sc);
+    }
+    attempt(0);
+  }
+
+  /* ---------- Formulaire ---------- */
+  function setView(v) {
+    state.view = v;
+    $('#app').setAttribute('data-view', v);
+    $('#tabCal').setAttribute('aria-selected', v === 'cal');
+    $('#tabGlobe').setAttribute('aria-selected', v === 'globe');
+    if (v === 'globe') { requestAnimationFrame(function () { G.resize(); G.kick(); }); }
+  }
+
+  function renderWho() {
+    var d = state.draft, box = $('#fWho');
+    box.innerHTML = ['a', 'b', 'ab'].map(function (w) {
+      return '<button type="button" data-who="' + w + '" aria-pressed="' + (d.who === w) + '"><i class="dot ' + w + '"></i><span class="n">' + esc(whoLabel(w)) + '</span></button>';
+    }).join('');
+  }
+  function renderColor() {
+    var d = state.draft;
+    $('#fColor').innerHTML = '<button type="button" class="auto" data-color="" aria-pressed="' + !d.color + '" aria-label="Couleur de la personne" style="background:var(--' + whoKey(d.who) + ')">Auto</button>' +
+      PALETTE.map(function (p) { return '<button type="button" data-color="' + p[0] + '" aria-pressed="' + (d.color === p[0]) + '" aria-label="' + p[1] + '" style="background:var(--' + p[0] + ')"></button>'; }).join('');
+  }
+  function renderPlaceSel() {
+    var d = state.draft, sel = $('#fPlaceSel');
+    if (d.place) {
+      sel.hidden = false;
+      $('#fPlaceName').value = d.place.name;
+      $('#fCoords').textContent = d.place.lat.toFixed(5) + ', ' + d.place.lon.toFixed(5);
+      $('#fPlace').hidden = true;
+    } else { sel.hidden = true; $('#fPlace').hidden = false; }
+    $('#fSug').hidden = true;
+  }
+  function openSheet(ev) {
+    var isNew = !ev || !ev.id;
+    state.confirmDelete = false;
+    state.draft = ev ? JSON.parse(JSON.stringify(ev)) : { title: '', who: 'ab', start: state.selected, end: '', time: '', place: null, note: '', color: '' };
+    if (!state.draft.who) state.draft.who = 'ab';
+    if (!state.draft.color) state.draft.color = '';
+    if (isNew) { state.draft.color = pickFreeColor(state.draft.start); state.draft.autoColor = true; }
+    $('#sheetTitle').textContent = isNew ? 'Nouvel événement' : 'Modifier l’événement';
+    $('#fTitle').value = state.draft.title || '';
+    $('#fStart').value = state.draft.start || state.selected;
+    $('#fEnd').value = state.draft.end || '';
+    $('#fTime').value = state.draft.time || '';
+    $('#fNote').value = state.draft.note || '';
+    $('#fPlace').value = '';
+    $('#fErr').hidden = true;
+    $('#fDelete').hidden = isNew; $('#fDelete').textContent = 'Supprimer';
+    renderWho(); renderColor(); renderPlaceSel();
+    $('#overlay').hidden = false;
+    if (isNew) setTimeout(function () { try { $('#fTitle').focus(); } catch (e) {} }, 30);
+  }
+  function closeSheet() { $('#overlay').hidden = true; state.draft = null; }
+  function readForm() {
+    var d = state.draft; if (!d) return;
+    d.title = $('#fTitle').value.trim(); d.start = $('#fStart').value; d.end = $('#fEnd').value; d.time = $('#fTime').value; d.note = $('#fNote').value.trim();
+    if (d.place) { var nm = $('#fPlaceName').value.trim(); if (nm) d.place.name = nm; }
+  }
+  function showErr(msg) { var e = $('#fErr'); e.textContent = msg; e.hidden = false; }
+
+  function startPick() {
+    readForm();
+    state.pickMode = true;
+    state.pickPt = state.draft && state.draft.place ? { lat: state.draft.place.lat, lon: state.draft.place.lon } : null;
+    $('#overlay').hidden = true;
+    $('#pick').hidden = false;
+    renderPickBar();
+    setView('globe');
+    G.sync();
+    if (state.pickPt) G.flyTo(state.pickPt.lon, state.pickPt.lat, Math.max(G.k, 12));
+  }
+  function renderPickBar() {
+    $('#pickTxt').textContent = state.pickPt ? 'Point placé. Touchez ailleurs pour le déplacer.' : 'Zoomez, puis touchez l’endroit exact';
+    $('#pickOk').hidden = !state.pickPt;
+  }
+  function stopPick() { state.pickMode = false; state.pickPt = null; $('#pick').hidden = true; G.sync(); }
+  function finishPick(place) {
+    stopPick();
+    if (state.draft) state.draft.place = place;
+    $('#overlay').hidden = false;
+    renderPlaceSel();
+    setTimeout(function () { var el = $('#fPlaceName'); try { el.focus(); el.select(); } catch (e) {} }, 30);
+  }
+  function cancelPick() { stopPick(); if (state.draft) $('#overlay').hidden = false; }
+
+  function showSuggestions(q) {
+    var box = $('#fSug'), n = norm(q.trim());
+    if (n.length < 2) { box.hidden = true; return; }
+    state.results = null;
+    var geoBtn = '<button type="button" data-geo="1"><span>' + (parseCoords(q) ? 'Utiliser ces coordonnées' : 'Chercher cette adresse') + '</span><small>' + esc(q.trim().slice(0, 28)) + '</small></button>';
+    var res = CITY_DATA.filter(function (c) { return norm(c.n).indexOf(n) === 0 || norm(c.n + ' ' + c.c).indexOf(n) !== -1; }).slice(0, 6);
+    box.innerHTML = geoBtn + res.map(function (c) { return '<button type="button" data-city="' + CITY_DATA.indexOf(c) + '"><span>' + esc(c.n) + '</span><small>' + esc(c.c) + '</small></button>'; }).join('');
+    box.hidden = false;
+  }
+
+  function round5(x) { return Math.round(x * 1e5) / 1e5; }
+  async function searchPlaces(q) {
+    var pc = parseCoords(q);
+    if (pc) return [{ name: 'Lieu choisi', sub: pc.lat.toFixed(5) + ', ' + pc.lon.toFixed(5), lat: pc.lat, lon: pc.lon }];
+    var url = 'https://nominatim.openstreetmap.org/search?format=jsonv2&limit=5&accept-language=fr&q=' + encodeURIComponent(q);
+    var r;
+    try { r = await fetch(url, { headers: { 'Accept': 'application/json' } }); }
+    catch (e) { throw { msg: 'Pas de connexion. Réessayez ou placez le point sur le globe.' }; }
+    if (!r.ok) throw { msg: 'Recherche impossible pour le moment. Placez le point sur le globe.' };
+    var js = await r.json();
+    if (!js || !js.length) throw { msg: 'Adresse introuvable. Vérifiez l’orthographe ou placez le point sur le globe.' };
+    return js.map(function (x) {
+      var parts = String(x.display_name || '').split(', ');
+      var name = x.name && x.name.length > 1 ? x.name : parts.slice(0, 2).join(' ');
+      if (/^\d/.test(parts[0]) && parts[1]) name = parts[0] + ' ' + parts[1];
+      return { name: name.slice(0, 60), sub: parts.slice(name === x.name ? 1 : 2, 5).join(', '), lat: round5(parseFloat(x.lat)), lon: round5(parseFloat(x.lon)) };
+    });
+  }
+  async function geocode(q) {
+    var res = await searchPlaces(q);
+    return { name: res[0].name, lat: res[0].lat, lon: res[0].lon };
+  }
+
+  /* ---------- Écriture des données ---------- */
+  function toast(msg) {
+    var t = $('#toast'); t.textContent = msg; t.hidden = false;
+    clearTimeout(toast.h); toast.h = setTimeout(function () { t.hidden = true; }, 3200);
+  }
+  function writeFail(err) {
+    if (err && err.code === 'permission-denied') toast('Accès refusé : vérifiez le code du calendrier dans les réglages.');
+    else if (err && err.code === 'resource-exhausted') toast('Limite gratuite atteinte pour aujourd’hui. Réessayez demain.');
+    else toast('Enregistrement impossible. Réessayez dans un instant.');
+  }
+  function cleanData(d) {
+    var out = { title: d.title, who: d.who, color: /^p[1-8]$/.test(d.color || '') ? d.color : '', start: d.start, end: d.end && d.end > d.start ? d.end : '', time: d.time || '', note: d.note || '', place: null };
+    if (d.place && typeof d.place.lat === 'number' && typeof d.place.lon === 'number') out.place = { name: d.place.name || 'Lieu', lat: d.place.lat, lon: d.place.lon };
+    return out;
+  }
+  async function saveEvent(d) {
+    var data = cleanData(d);
+    if (!db) {
+      if (d.id) state.events = state.events.map(function (e) { return e.id === d.id ? Object.assign({ id: d.id }, data) : e; });
+      else state.events = state.events.concat([Object.assign({ id: 'local' + (localSeq++) }, data)]);
+      renderAll(); return;
+    }
+    data.updatedAt = Date.now();
+    if (d.id) await FS.setDoc(FS.doc(evCol, d.id), data); else await FS.addDoc(evCol, data);
+  }
+  async function deleteEvent(id) {
+    if (!db) { state.events = state.events.filter(function (e) { return e.id !== id; }); renderAll(); return; }
+    await FS.deleteDoc(FS.doc(evCol, id));
+  }
+  async function saveNames(a, b) {
+    state.names = { a: a, b: b }; state.hasConfig = true; state.editNames = false;
+    if (db) { try { await FS.setDoc(cfgDoc, { a: a, b: b }, { merge: true }); } catch (e) { writeFail(e); } }
+    renderAll();
+  }
+
+  /* ---------- Événements d'interface ---------- */
+  function jumpTo(id) {
+    var e = state.events.filter(function (x) { return x.id === id; })[0]; if (!e) return;
+    var d = parseD(e.start);
+    state.month = new Date(d.getFullYear(), d.getMonth(), 1); state.selected = e.start;
+    setView('cal'); renderAll();
+    if (e.place && typeof e.place.lat === 'number') G.flyTo(e.place.lon, e.place.lat, 1.5);
+    window.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' });
+  }
+  function showOnGlobe(id) {
+    var e = state.events.filter(function (x) { return x.id === id; })[0]; if (!e || !e.place) return;
+    state.pin = pinKey(e.place);
+    setView('globe'); renderAll();
+    G.flyTo(e.place.lon, e.place.lat, 1.6);
+  }
+
+  function bind() {
+    $('#addBtn').addEventListener('click', function () { openSheet(null); });
+    $('#setBtn').addEventListener('click', openSettings);
+    $('#zMe').addEventListener('click', function () { locateMe(true); });
+    $('#todayBox').addEventListener('click', function (ev) { if (ev.target.id === 'todayLocate') locateMe(false); });
+    $('#notice').addEventListener('click', function (ev) {
+      var b = ev.target.closest('button[data-n]'); if (!b) return;
+      if (b.getAttribute('data-n') === 'skip') { lsSet('nc.notifSkip', '1'); renderNotice(); }
+      else enableNotifs(b);
+    });
+    $('#setOverlay').addEventListener('click', onSettingsClick);
+    $('#setup').addEventListener('click', onSetupClick);
+    $('#setup').addEventListener('submit', onSetupSubmit);
+    $('#legend').addEventListener('click', function () { state.editNames = true; renderNotice(); var el = $('#nameA'); if (el) el.focus(); });
+    $('#tabCal').addEventListener('click', function () { setView('cal'); });
+    $('#tabGlobe').addEventListener('click', function () { setView('globe'); });
+    $('#prevM').addEventListener('click', function () { state.month = new Date(state.month.getFullYear(), state.month.getMonth() - 1, 1); renderCalendar(); G.sync(); });
+    $('#nextM').addEventListener('click', function () { state.month = new Date(state.month.getFullYear(), state.month.getMonth() + 1, 1); renderCalendar(); G.sync(); });
+    $('#todayBtn').addEventListener('click', function () {
+      var n = new Date(); today = ymd(n); state.month = new Date(n.getFullYear(), n.getMonth(), 1); state.selected = today; renderAll();
+    });
+    $('#days').addEventListener('click', function (ev) {
+      var b = ev.target.closest('.day'); if (!b) return;
+      state.selected = b.getAttribute('data-date');
+      var d = parseD(state.selected);
+      if (d.getMonth() !== state.month.getMonth()) state.month = new Date(d.getFullYear(), d.getMonth(), 1);
+      state.pin = null;
+      renderAll();
+      var first = eventsOn(state.selected).filter(function (e) { return e.place && typeof e.place.lat === 'number'; })[0];
+      if (first) G.flyTo(first.place.lon, first.place.lat, Math.max(G.k, 1.4));
+    });
+    function onAct(ev) {
+      var t = ev.target.closest('[data-act]'); if (!t) return;
+      var act = t.getAttribute('data-act'), id = t.getAttribute('data-id');
+      if (act === 'link') { ev.stopPropagation(); return; }
+      if (act === 'show') { ev.stopPropagation(); showOnGlobe(id); }
+      else if (act === 'edit') { var e = state.events.filter(function (x) { return x.id === id; })[0]; if (e) openSheet(e); }
+      else if (act === 'add') openSheet(null);
+      else if (act === 'jump') jumpTo(id);
+      else if (act === 'closepin') { state.pin = null; renderPinCard(); G.sync(); }
+    }
+    $('#calPane').addEventListener('click', onAct);
+    $('#pinCard').addEventListener('click', onAct);
+    $('#dayList').addEventListener('keydown', function (ev) { if (ev.key === 'Enter' && ev.target.classList.contains('ev')) onAct(ev); });
+    $('.seg').addEventListener('click', function (ev) {
+      var b = ev.target.closest('button[data-f]'); if (!b) return;
+      state.filter = b.getAttribute('data-f');
+      Array.prototype.forEach.call(document.querySelectorAll('.seg button'), function (x) { x.setAttribute('aria-pressed', x === b); });
+      state.pin = null; renderPinCard(); G.sync();
+    });
+    $('#notice').addEventListener('submit', function (ev) {
+      if (ev.target.id !== 'namesForm') return;
+      ev.preventDefault();
+      var a = $('#nameA').value.trim(), b = $('#nameB').value.trim();
+      saveNames(a, b);
+    });
+    $('#notice').addEventListener('click', function (ev) { if (ev.target.id === 'namesCancel') { state.editNames = false; renderNotice(); } });
+
+    // Formulaire
+    $('#fWho').addEventListener('click', function (ev) { var b = ev.target.closest('button[data-who]'); if (!b) return; state.draft.who = b.getAttribute('data-who'); renderWho(); renderColor(); });
+    $('#fColor').addEventListener('click', function (ev) { var b = ev.target.closest('button[data-color]'); if (!b) return; state.draft.color = b.getAttribute('data-color'); state.draft.autoColor = false; renderColor(); });
+    $('#fStart').addEventListener('change', function (ev) { var d = state.draft; if (d && !d.id && d.autoColor && ev.target.value) { d.color = pickFreeColor(ev.target.value); renderColor(); } });
+    $('#pickOk').addEventListener('click', function () {
+      if (!state.pickPt) return;
+      var old = state.draft && state.draft.place;
+      finishPick({ name: old && old.name ? old.name : 'Lieu choisi', lat: state.pickPt.lat, lon: state.pickPt.lon });
+    });
+    $('#fPlace').addEventListener('input', function (ev) { showSuggestions(ev.target.value); });
+    $('#fSug').addEventListener('click', async function (ev) {
+      var g = ev.target.closest('button[data-geo]');
+      if (g) {
+        var q = $('#fPlace').value.trim();
+        g.disabled = true; g.firstChild.textContent = 'Recherche…';
+        try {
+          var res = await searchPlaces(q);
+          if (res.length === 1) { state.draft.place = { name: res[0].name, lat: res[0].lat, lon: res[0].lon }; renderPlaceSel(); return; }
+          state.results = res;
+          $('#fSug').innerHTML = res.map(function (x, i) { return '<button type="button" data-res="' + i + '"><span>' + esc(x.name) + '</span><small>' + esc(x.sub.slice(0, 40)) + '</small></button>'; }).join('');
+          $('#fSug').hidden = false; $('#fErr').hidden = true;
+        }
+        catch (e) { g.disabled = false; g.firstChild.textContent = parseCoords(q) ? 'Utiliser ces coordonnées' : 'Chercher cette adresse'; showErr(e && e.msg ? e.msg : 'Adresse introuvable. Placez le point sur le globe.'); }
+        return;
+      }
+      var rb = ev.target.closest('button[data-res]');
+      if (rb && state.results) { var x = state.results[parseInt(rb.getAttribute('data-res'), 10)]; state.draft.place = { name: x.name, lat: x.lat, lon: x.lon }; state.results = null; renderPlaceSel(); return; }
+      var b = ev.target.closest('button[data-city]'); if (!b) return;
+      var c = CITY_DATA[parseInt(b.getAttribute('data-city'), 10)];
+      state.draft.place = { name: c.n, lat: c.lat, lon: c.lon };
+      renderPlaceSel();
+    });
+    $('#fPlaceClear').addEventListener('click', function () { state.draft.place = null; $('#fPlace').value = ''; renderPlaceSel(); $('#fPlace').focus(); });
+    $('#fPick').addEventListener('click', startPick);
+    $('#pickCancel').addEventListener('click', cancelPick);
+    $('#fCancel').addEventListener('click', closeSheet);
+    $('#overlay').addEventListener('click', function (ev) { if (ev.target.id === 'overlay') closeSheet(); });
+    document.addEventListener('keydown', function (ev) {
+      if (ev.key === 'Escape') { if (state.pickMode) cancelPick(); else if (!$('#setOverlay').hidden) closeSettings(); else if (!$('#overlay').hidden) closeSheet(); }
+    });
+    $('#fDelete').addEventListener('click', async function () {
+      if (!state.draft || !state.draft.id) return;
+      if (!db) return;
+      if (!state.confirmDelete) { state.confirmDelete = true; this.textContent = 'Confirmer la suppression'; return; }
+      var id = state.draft.id;
+      try { await deleteEvent(id); closeSheet(); toast('Événement supprimé'); } catch (e) { writeFail(e); }
+    });
+    $('#sheet').addEventListener('submit', async function (ev) {
+      ev.preventDefault();
+      readForm();
+      var d = state.draft;
+      if (!d.title) { showErr('Donnez un titre à cet événement.'); $('#fTitle').focus(); return; }
+      if (!d.start) { showErr('Choisissez une date de début.'); return; }
+      if (d.end && d.end < d.start) { showErr('La fin doit tomber après le début.'); return; }
+      var btn = $('#fSave'); btn.disabled = true;
+      if (!d.place) {
+        var q = $('#fPlace').value.trim();
+        if (q) {
+          try { d.place = await geocode(q); }
+          catch (e) {
+            d.place = cityGuess(q);
+            if (!d.place) { showErr(((e && e.msg) || 'Adresse introuvable.') + ' Effacez l’adresse pour enregistrer sans lieu.'); btn.disabled = false; return; }
+          }
+        }
+      }
+      try {
+        await saveEvent(d);
+        var sd = parseD(d.start);
+        state.month = new Date(sd.getFullYear(), sd.getMonth(), 1); state.selected = d.start;
+        closeSheet(); renderAll();
+        toast('Événement enregistré');
+      } catch (e) { writeFail(e); }
+      btn.disabled = false;
+    });
+  }
+
+  /* ---------- Réglages Firebase ---------- */
+  var FIREBASE_CONFIG = {
+    apiKey: 'AIzaSyAcCRiahMYipVlgc39VxBimw35_e-041iA',
+    authDomain: 'notre-calendrier-6e555.firebaseapp.com',
+    projectId: 'notre-calendrier-6e555',
+    storageBucket: 'notre-calendrier-6e555.firebasestorage.app',
+    messagingSenderId: '976700266633',
+    appId: '1:976700266633:web:bcc1f95f952f4fc7af0e58'
+  };
+  var VAPID_KEY = '';
+  var SDK = 'https://www.gstatic.com/firebasejs/10.12.2/';
+  // Données reprises de l'ancienne version, copiées à la création du calendrier.
+  var SEED = {
+    names: { a: 'Hamza', b: 'Gaby' },
+    events: [{ title: 'Mexique 🇲🇽', who: 'ab', color: '', start: '2027-10-24', end: '2027-11-07', time: '', note: '', place: { name: 'Mexico', lat: 19.43, lon: -99.13 } }]
+  };
+
+  /* ---------- Petits utilitaires ---------- */
+  function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function lsSet(k, v) { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) {} }
+  function isIOS() { return /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); }
+  function isStandalone() { return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true; }
+  function notifSupported() { return 'Notification' in window && 'serviceWorker' in navigator && 'PushManager' in window; }
+  function notifOn() { return notifSupported() && Notification.permission === 'granted' && lsGet('nc.notif') === '1'; }
+  function validCode(c) { return typeof c === 'string' && /^[a-z0-9]{24,64}$/.test(c); }
+  function newCode() {
+    var a = new Uint8Array(20), out = '';
+    crypto.getRandomValues(a);
+    for (var i = 0; i < a.length; i++) out += (a[i] % 36).toString(36);
+    return out + Date.now().toString(36).slice(-4);
+  }
+  function shareLink(code) { return location.origin + location.pathname + '?c=' + code; }
+  function hashStr(t) {
+    var h1 = 0x811c9dc5, h2 = 5381;
+    for (var i = 0; i < t.length; i++) { var c = t.charCodeAt(i); h1 = Math.imul(h1 ^ c, 16777619) >>> 0; h2 = (Math.imul(h2, 33) + c) >>> 0; }
+    return 't' + h1.toString(36) + h2.toString(36);
+  }
+  function codeFrom(text) {
+    text = String(text || '').trim();
+    var m = text.match(/[?&]c=([a-z0-9]{24,64})/i);
+    var c = (m ? m[1] : text).toLowerCase();
+    return validCode(c) ? c : null;
+  }
+  function getCode() {
+    var p = codeFrom(new URLSearchParams(location.search).get('c') || '');
+    if (p) { lsSet('nc.couple', p); return p; }
+    var c = lsGet('nc.couple');
+    return validCode(c) ? c : null;
+  }
+  // Le code reste dans l'adresse : sur iPhone, « Sur l'écran d'accueil » garde ainsi le bon calendrier.
+  function setCodeInUrl(code) { try { history.replaceState(null, '', location.pathname + (code ? '?c=' + code : '') + location.hash); } catch (e) {} }
+
+  /* ---------- Base de données (Firebase) ---------- */
+  async function loadFirebase() {
+    if (FS && db) return true;
+    try {
+      var appMod = await import(SDK + 'firebase-app.js');
+      FS = await import(SDK + 'firebase-firestore.js');
+      fbApp = appMod.initializeApp(FIREBASE_CONFIG);
+      try { db = FS.initializeFirestore(fbApp, { localCache: FS.persistentLocalCache({ tabManager: FS.persistentMultipleTabManager() }) }); }
+      catch (e) { db = FS.getFirestore(fbApp); }
+      return true;
+    } catch (e) { console.error(e); FS = null; return false; }
+  }
+
+  function connect(code) {
+    unsub.forEach(function (f) { try { f(); } catch (e) {} });
+    unsub = [];
+    evCol = FS.collection(db, 'couples', code, 'events');
+    cfgDoc = FS.doc(db, 'couples', code, 'meta', 'config');
+    state.events = []; state.ready = false;
+    unsub.push(FS.onSnapshot(evCol, function (snap) {
+      state.events = snap.docs.map(function (x) { var v = x.data() || {}; v.id = x.id; return v; }).filter(function (e) { return e.title && e.start; });
+      state.ready = true;
+      renderAll();
+      if (!connect.focused) { connect.focused = true; flyHome(); }
+    }, function (err) {
+      toast(err && err.code === 'permission-denied' ? 'Accès refusé : le code du calendrier n’est pas valide.' : 'Connexion à la base interrompue.');
+    }));
+    unsub.push(FS.onSnapshot(cfgDoc, function (snap) {
+      state.namesLoaded = true; state.hasConfig = snap.exists();
+      if (snap.exists()) { var v = snap.data() || {}; state.names = { a: v.a || '', b: v.b || '' }; }
+      renderAll(); renderSetup();
+    }, function () {}));
+  }
+
+  async function createCouple(btn) {
+    btn.disabled = true; btn.textContent = 'Création…';
+    var code = newCode();
+    try {
+      if (!(await loadFirebase())) throw new Error('firebase');
+      var batch = FS.writeBatch(db), now = Date.now();
+      batch.set(FS.doc(db, 'couples', code, 'meta', 'config'), { a: SEED.names.a, b: SEED.names.b, createdAt: now });
+      SEED.events.forEach(function (e) { batch.set(FS.doc(FS.collection(db, 'couples', code, 'events')), Object.assign({ updatedAt: now }, e)); });
+      await batch.commit();
+    } catch (e) {
+      console.error(e);
+      btn.disabled = false; btn.textContent = 'Créer notre calendrier';
+      toast('Création impossible. Vérifiez la connexion et réessayez.');
+      return;
+    }
+    lsSet('nc.couple', code); setCodeInUrl(code);
+    connect(code); renderSetup();
+  }
+
+  async function joinCouple(text, btn) {
+    var err = $('#joinErr'), code = codeFrom(text);
+    if (!code) { err.textContent = 'Ce lien ou ce code n’est pas reconnu. Copiez-le en entier.'; err.hidden = false; return; }
+    btn.disabled = true; btn.textContent = 'Vérification…';
+    try {
+      if (!(await loadFirebase())) throw new Error('firebase');
+      var snap = await FS.getDoc(FS.doc(db, 'couples', code, 'meta', 'config'));
+      if (!snap.exists()) { err.textContent = 'Aucun calendrier ne correspond à ce code.'; err.hidden = false; btn.disabled = false; btn.textContent = 'Rejoindre'; return; }
+    } catch (e) {
+      err.textContent = 'Vérification impossible. Vérifiez la connexion et réessayez.'; err.hidden = false;
+      btn.disabled = false; btn.textContent = 'Rejoindre'; return;
+    }
+    lsSet('nc.couple', code); setCodeInUrl(code);
+    connect(code); renderSetup();
+  }
+
+  /* ---------- Écran d'accueil ---------- */
+  function renderSetup() {
+    var box = $('#setup'), html = '', code = lsGet('nc.couple');
+    if (!validCode(code)) {
+      html = '<div class="box"><h1>Notre Calendrier</h1><p>Vos événements à deux, sur un calendrier et un globe, avec des rappels sur vos téléphones.</p>' +
+        '<button class="btn primary" type="button" data-s="create">Créer notre calendrier</button>' +
+        '<p class="or">ou</p>' +
+        '<form id="joinForm" class="field" novalidate><label for="joinCode">J’ai reçu un lien ou un code</label>' +
+        '<input class="input" id="joinCode" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Collez le lien ou le code ici">' +
+        '<button class="btn" type="submit">Rejoindre</button><p class="err" id="joinErr" hidden></p></form></div>';
+    } else if (!lsGet('nc.me') && state.namesLoaded) {
+      html = '<div class="box"><h1>Qui es-tu ?</h1><p>Sur ce téléphone. Ça sert à t’envoyer les rappels qui te concernent.</p><div class="pair">' +
+        '<button class="btn" type="button" data-s="me" data-w="a"><i class="dot a"></i>' + esc(nameOf('a')) + '</button>' +
+        '<button class="btn" type="button" data-s="me" data-w="b"><i class="dot b"></i>' + esc(nameOf('b')) + '</button></div>' +
+        '<p class="hint">Les prénoms se modifient ensuite dans les réglages (la cloche en haut).</p></div>';
+    }
+    if (box.getAttribute('data-html') !== html) { box.innerHTML = html; box.setAttribute('data-html', html); }
+    box.hidden = !html;
+  }
+  function onSetupClick(ev) {
+    var b = ev.target.closest('button[data-s]'); if (!b) return;
+    var s = b.getAttribute('data-s');
+    if (s === 'create') createCouple(b);
+    else if (s === 'me') { lsSet('nc.me', b.getAttribute('data-w')); renderSetup(); renderAll(); }
+    else if (s === 'retry') location.reload();
+  }
+  function onSetupSubmit(ev) {
+    if (ev.target.id !== 'joinForm') return;
+    ev.preventDefault();
+    joinCouple($('#joinCode').value, ev.target.querySelector('button[type="submit"]'));
+  }
+
+  /* ---------- Rappels (notifications) ---------- */
+  var swReg = null;
+  async function registerSW() {
+    if (!('serviceWorker' in navigator)) return null;
+    try { swReg = await navigator.serviceWorker.register('firebase-messaging-sw.js', { scope: './' }); }
+    catch (e) { console.warn(e); swReg = null; }
+    return swReg;
+  }
+  async function refreshToken(strict) {
+    try {
+      var code = lsGet('nc.couple');
+      if (!validCode(code) || !VAPID_KEY || !(await loadFirebase())) return;
+      var M = await import(SDK + 'firebase-messaging.js');
+      if (!(await M.isSupported())) throw new Error('unsupported');
+      var reg = swReg || await registerSW();
+      if (!reg) throw new Error('no service worker');
+      await navigator.serviceWorker.ready;
+      var messaging = M.getMessaging(fbApp);
+      var token = await M.getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: reg });
+      if (!token) throw new Error('no token');
+      var id = hashStr(token), old = lsGet('nc.token');
+      await FS.setDoc(FS.doc(db, 'couples', code, 'tokens', id), { token: token, who: lsGet('nc.me') || '', ua: navigator.userAgent.slice(0, 140), updatedAt: Date.now() });
+      if (old && old !== id) { try { await FS.deleteDoc(FS.doc(db, 'couples', code, 'tokens', old)); } catch (e) {} }
+      lsSet('nc.notif', '1'); lsSet('nc.token', id);
+      if (!refreshToken.listening) {
+        refreshToken.listening = true;
+        M.onMessage(messaging, function (p) { var n = (p && p.notification) || {}; toast((n.title || 'Rappel') + (n.body ? ' · ' + n.body : '')); });
+      }
+    } catch (e) { if (strict) throw e; console.warn(e); }
+  }
+  async function enableNotifs(btn) {
+    if (!VAPID_KEY) return;
+    if (isIOS() && !isStandalone()) { openSettings(); return; }
+    if (!notifSupported()) { toast('Ce navigateur ne peut pas recevoir de rappels.'); return; }
+    if (btn) { btn.disabled = true; btn.textContent = 'Activation…'; }
+    try {
+      var perm = await Notification.requestPermission();
+      if (perm !== 'granted') { toast('Rappels refusés. Autorisez-les dans les réglages du téléphone.'); return; }
+      await refreshToken(true);
+      toast('Rappels activés sur ce téléphone');
+    } catch (e) { console.error(e); toast('Activation impossible. Réessayez dans un instant.'); }
+    finally { renderNotice(); if (!$('#setOverlay').hidden) renderSettings(); }
+  }
+  async function disableNotifs() {
+    var code = lsGet('nc.couple'), id = lsGet('nc.token');
+    if (validCode(code) && id && FS) { try { await FS.deleteDoc(FS.doc(db, 'couples', code, 'tokens', id)); } catch (e) {} }
+    lsSet('nc.notif', null); lsSet('nc.token', null); lsSet('nc.notifSkip', '1');
+    toast('Rappels désactivés sur ce téléphone');
+    renderNotice(); renderSettings();
+  }
+
+  /* ---------- Réglages ---------- */
+  function renderSettings() {
+    var code = lsGet('nc.couple'), me = lsGet('nc.me'), notif = '';
+    if (!VAPID_KEY) notif = '<p>Les rappels arrivent bientôt.</p>';
+    else if (notifOn()) notif = '<p>Activés sur ce téléphone : la veille au soir, le matin du jour J, et une heure avant si l’événement a une heure.</p><div class="actions"><button class="btn small" type="button" data-x="notif-off">Désactiver</button><button class="btn small" type="button" data-x="notif-test">Vérifier</button></div>';
+    else if (isIOS() && !isStandalone()) notif = '<p>Sur iPhone, ajoutez d’abord l’appli à l’écran d’accueil :</p><ol class="steps"><li>Dans Safari, touchez Partager (carré avec une flèche).</li><li>« Sur l’écran d’accueil », puis « Ajouter ».</li><li>Ouvrez l’appli depuis l’icône et revenez ici.</li></ol>';
+    else if (notifSupported()) notif = '<p>La veille au soir, le matin du jour J, et une heure avant si l’événement a une heure.</p><div class="actions"><button class="btn primary small" type="button" data-x="notif-on">Activer les rappels</button></div>';
+    else notif = '<p>Ce navigateur ne peut pas recevoir de rappels.</p>';
+    $('#setSheet').innerHTML = '<h2 id="setTitle">Réglages</h2>' +
+      '<div class="set-row"><h3>Rappels</h3>' + notif + '</div>' +
+      '<div class="set-row"><h3>Sur ce téléphone, je suis</h3><div class="who">' +
+        ['a', 'b'].map(function (w) { return '<button type="button" data-x="me" data-w="' + w + '" aria-pressed="' + (me === w) + '"><i class="dot ' + w + '"></i><span class="n">' + esc(nameOf(w)) + '</span></button>'; }).join('') + '</div></div>' +
+      (validCode(code) ? '<div class="set-row"><h3>Inviter l’autre</h3><p>Envoyez ce lien. En l’ouvrant, on rejoint ce calendrier.</p><div class="codebox">' + esc(shareLink(code)) + '</div>' +
+        '<div class="actions">' + (navigator.share ? '<button class="btn small" type="button" data-x="share">Envoyer</button>' : '') + '<button class="btn small" type="button" data-x="copy">Copier le lien</button></div></div>' : '') +
+      '<div class="set-row"><h3>Prénoms</h3><div class="actions"><button class="btn small" type="button" data-x="names">Modifier les prénoms</button></div></div>' +
+      '<div class="actions"><button class="btn grow" type="button" data-x="close">Fermer</button></div>';
+  }
+  function openSettings() { renderSettings(); $('#setOverlay').hidden = false; }
+  function closeSettings() { $('#setOverlay').hidden = true; }
+  async function onSettingsClick(ev) {
+    if (ev.target.id === 'setOverlay') { closeSettings(); return; }
+    var b = ev.target.closest('button[data-x]'); if (!b) return;
+    var x = b.getAttribute('data-x'), code = lsGet('nc.couple');
+    if (x === 'close') closeSettings();
+    else if (x === 'notif-on') enableNotifs(b);
+    else if (x === 'notif-off') disableNotifs();
+    else if (x === 'notif-test') {
+      try { await refreshToken(true); toast('Ce téléphone est bien inscrit aux rappels'); } catch (e) { toast('Inscription aux rappels impossible pour le moment.'); }
+    }
+    else if (x === 'me') { lsSet('nc.me', b.getAttribute('data-w')); renderSettings(); if (notifOn()) refreshToken(); }
+    else if (x === 'share') { try { await navigator.share({ title: 'Notre Calendrier', text: 'Rejoins notre calendrier :', url: shareLink(code) }); } catch (e) {} }
+    else if (x === 'copy') {
+      try { await navigator.clipboard.writeText(shareLink(code)); toast('Lien copié'); }
+      catch (e) { toast('Copie impossible : sélectionnez le lien à la main.'); }
+    }
+    else if (x === 'names') { closeSettings(); state.editNames = true; renderNotice(); setView('cal'); window.scrollTo({ top: 0 }); var el = $('#nameA'); if (el) el.focus(); }
+  }
+
+  /* ---------- Ma position ---------- */
+  function haversine(a, b) {
+    var R = 6371, r = Math.PI / 180, dLat = (b.lat - a.lat) * r, dLon = (b.lon - a.lon) * r;
+    var h = Math.pow(Math.sin(dLat / 2), 2) + Math.cos(a.lat * r) * Math.cos(b.lat * r) * Math.pow(Math.sin(dLon / 2), 2);
+    return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
+  }
+  function distLabel(p) {
+    if (!state.me) return '';
+    var d = haversine(state.me, p);
+    return d < 1 ? 'à ' + Math.round(d * 1000) + ' m' : d < 10 ? 'à ' + d.toFixed(1).replace('.', ',') + ' km' : 'à ' + Math.round(d).toLocaleString('fr-FR') + ' km';
+  }
+  function setMe(pos) { state.me = { lat: pos.coords.latitude, lon: pos.coords.longitude }; renderAll(); }
+  function locateMe(fly) {
+    if (!navigator.geolocation) { toast('Localisation indisponible sur cet appareil.'); return; }
+    toast('Recherche de votre position…');
+    navigator.geolocation.getCurrentPosition(function (pos) {
+      lsSet('nc.geo', '1'); setMe(pos);
+      $('#toast').hidden = true;
+      if (fly) { setView('globe'); G.flyTo(state.me.lon, state.me.lat, Math.max(G.k, 6)); }
+    }, function (err) {
+      toast(err && err.code === 1 ? 'Localisation refusée. Autorisez-la dans les réglages du téléphone.' : 'Position introuvable pour le moment.');
+    }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 });
+  }
+  function autoLocate() {
+    if (lsGet('nc.geo') !== '1' || !navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(setMe, function () {}, { timeout: 15000, maximumAge: 300000 });
+  }
+
+  /* ---------- Démarrage ---------- */
+  bind();
+  initGlobe();
+  function checkDay() { var t = ymd(new Date()); if (t !== today) { if (state.selected === today) state.selected = t; today = t; renderAll(); } }
+  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') { checkDay(); autoLocate(); } });
+  setInterval(function () { checkDay(); if (G.size && document.visibilityState === 'visible') G.draw(performance.now()); }, 60000);
+  renderAll();
+  loadWorld();
+  G.flyTo(2.35, 30, 1);
+
+  async function start() {
+    var code = getCode();
+    if (code) setCodeInUrl(code);
+    renderSetup();
+    if (!(await loadFirebase())) {
+      var box = $('#setup');
+      box.innerHTML = '<div class="box"><h1>Connexion impossible</h1><p>Vérifiez votre connexion internet, puis réessayez.</p><button class="btn primary" type="button" data-s="retry">Réessayer</button></div>';
+      box.removeAttribute('data-html'); box.hidden = false;
+      return;
+    }
+    if (code) connect(code);
+    registerSW();
+    if (code && notifOn()) refreshToken();
+    autoLocate();
+  }
+  start();
+})();
+</script>
+
+</body></html>
