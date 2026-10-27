@@ -2,9 +2,9 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>Notre Calendrier</title>
-<meta name="version" content="1.1">
+<meta name="version" content="1.2">
 <meta name="description" content="Notre calendrier à deux, avec le globe de nos lieux et des rappels.">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon-192.png" type="image/png">
@@ -15,7 +15,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="theme-color" content="#ECF0F5" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0B131E" media="(prefers-color-scheme: dark)">
-<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}[hidden]{display:none!important}</style>
+<style>html{touch-action:manipulation;-webkit-text-size-adjust:100%}:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}[hidden]{display:none!important}</style>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -186,6 +186,9 @@ h1 {
 .day.sel .num { box-shadow: none; }
 .day .dots { display: flex; gap: 3px; height: 6px; }
 .day .dots i { width: 5px; height: 5px; border-radius: 50%; display: block; }
+.day .dots i.sp { background: transparent; box-shadow: inset 0 0 0 1.2px var(--muted); }
+.day.sel .dots i.sp { box-shadow: inset 0 0 0 1.2px var(--bg); }
+.holi small { display: block; font-size: 0.8rem; }
 .day .dots i.a { background: var(--a); } .day .dots i.b { background: var(--b); } .day .dots i.ab { background: var(--both); }
 .day.sel .dots i { box-shadow: 0 0 0 1px var(--ink); }
 .cal-foot { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; gap: 8px; }
@@ -272,6 +275,7 @@ h1 {
 .holi b { color: var(--ink); font-weight: 650; }
 .check { display: flex; align-items: center; gap: 10px; min-height: 44px; font-weight: 600; cursor: pointer; }
 .field > label.check { text-transform: none; letter-spacing: 0; font-size: 0.95rem; color: var(--ink); }
+.toggles { display: flex; flex-direction: column; gap: 2px; }
 .check input { width: 22px; height: 22px; accent-color: var(--ink); flex: none; margin: 0; }
 /* Formulaire */
 .overlay { position: fixed; inset: 0; background: rgba(8, 14, 24, 0.55); z-index: 50; display: flex; align-items: flex-end; justify-content: center; }
@@ -539,6 +543,9 @@ textarea.input { padding: 10px 12px; min-height: 76px; resize: vertical; }
   var fmtShort = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short' });
   var fmtMon3 = new Intl.DateTimeFormat('fr-FR', { month: 'short' });
   var PIN_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M12 21s7-6.1 7-11a7 7 0 1 0-14 0c0 4.9 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>';
+  // Empêche le zoom de la page (pincer, double-toucher) ; le globe garde son propre zoom.
+  ['gesturestart', 'gesturechange', 'gestureend'].forEach(function (t) { document.addEventListener(t, function (ev) { ev.preventDefault(); }, { passive: false }); });
+  document.addEventListener('touchmove', function (ev) { if (ev.touches && ev.touches.length > 1 && !(ev.target && ev.target.id === 'globe')) ev.preventDefault(); }, { passive: false });
   var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   /* ---------- État ---------- */
@@ -639,6 +646,93 @@ textarea.input { padding: 10px 12px; min-height: 76px; resize: vertical; }
     return map;
   }
   function holidayOn(day) { return holidays(parseInt(day.slice(0, 4), 10))[day] || ''; }
+
+  /* ---------- Dates qui reviennent chaque année ---------- */
+  function showSpecial() { return lsGet('nc.special') !== '0'; }
+  function showIslam() { return lsGet('nc.islam') === '1'; }
+  function easterOf(y) {
+    var a = y % 19, b = Math.floor(y / 100), c = y % 100, d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25),
+      g = Math.floor((b - f + 1) / 3), h = (19 * a + b - d - g + 15) % 30, i = Math.floor(c / 4), k = c % 4,
+      l = (32 + 2 * e + 2 * i - h - k) % 7, m = Math.floor((a + 11 * h + 22 * l) / 451);
+    return new Date(y, Math.floor((h + l - 7 * m + 114) / 31) - 1, ((h + l - 7 * m + 114) % 31) + 1);
+  }
+  function addD(date, n) { return new Date(date.getFullYear(), date.getMonth(), date.getDate() + n); }
+  // n-ième dimanche du mois (n = -1 : le dernier)
+  function sunday(y, month, n) {
+    if (n > 0) { var d = new Date(y, month, 1); d = addD(d, (7 - d.getDay()) % 7); return addD(d, 7 * (n - 1)); }
+    var l = new Date(y, month + 1, 0); return addD(l, -l.getDay());
+  }
+  // Date (heure de Paris) d'un équinoxe ou d'un solstice (Meeus, précision de quelques minutes)
+  function seasonDay(y, k) {
+    var Y = (y - 2000) / 1000, c = [
+      [2451623.80984, 365242.37404, 0.05169, -0.00411, -0.00057],
+      [2451716.56767, 365241.62603, 0.00325, 0.00888, -0.00030],
+      [2451810.21715, 365242.01767, -0.11575, 0.00337, 0.00078],
+      [2451900.05952, 365242.74049, -0.06223, -0.00823, 0.00032]][k];
+    var jde0 = c[0] + c[1] * Y + c[2] * Y * Y + c[3] * Y * Y * Y + c[4] * Y * Y * Y * Y;
+    var T = (jde0 - 2451545.0) / 36525, W = (35999.373 * T - 2.47) * Math.PI / 180;
+    var dl = 1 + 0.0334 * Math.cos(W) + 0.0007 * Math.cos(2 * W);
+    var A = [485, 203, 199, 182, 156, 136, 77, 74, 70, 58, 52, 50, 45, 44, 29, 18, 17, 16, 14, 12, 12, 12, 9, 8],
+      B = [324.96, 337.23, 342.08, 27.85, 73.14, 171.52, 222.54, 296.72, 243.58, 119.81, 297.17, 21.02, 247.54, 325.15, 60.93, 155.12, 288.79, 198.04, 199.76, 95.39, 287.11, 320.81, 227.73, 15.45],
+      C = [1934.136, 32964.467, 20.186, 445267.112, 45036.886, 22518.443, 65928.934, 3034.906, 9037.513, 33718.147, 150.678, 2281.226, 29929.562, 31555.956, 4443.417, 67555.328, 4562.452, 62894.029, 31436.921, 14577.848, 31931.756, 34777.259, 1222.114, 16859.074];
+    var S = 0;
+    for (var i = 0; i < 24; i++) S += A[i] * Math.cos((B[i] + C[i] * T) * Math.PI / 180);
+    var jde = jde0 + 0.00001 * S / dl;
+    var when = new Date((jde - 2440587.5) * 86400000 - 69000);
+    var parts = {};
+    new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(when).forEach(function (x) { parts[x.type] = x.value; });
+    return parts.year + '-' + parts.month + '-' + parts.day;
+  }
+  // Calendrier musulman tabulaire (peut différer d'un jour de la date annoncée par l'observation de la lune)
+  function hijriToDate(h, m, d) {
+    var jd = d + Math.ceil(29.5 * (m - 1)) + (h - 1) * 354 + Math.floor((3 + 11 * h) / 30) + 1948439.5 - 1;
+    var t = new Date((jd - 2440587.5) * 86400000 + 43200000);
+    return new Date(t.getUTCFullYear(), t.getUTCMonth(), t.getUTCDate());
+  }
+  var spCache = {};
+  function specials(y) {
+    var key = y + (showIslam() ? 'i' : '');
+    if (spCache[key]) return spCache[key];
+    var map = {};
+    function add(date, t, d) { var k = typeof date === 'string' ? date : ymd(date); (map[k] = map[k] || []).push({ t: t, d: d || '' }); }
+    var E = easterOf(y), pentecost = addD(E, 49), mothers = sunday(y, 4, -1);
+    if (ymd(mothers) === ymd(pentecost)) mothers = sunday(y, 5, 1);
+    add(y + '-01-06', 'Épiphanie', 'La galette des rois');
+    add(y + '-02-02', 'Chandeleur', 'Les crêpes');
+    add(y + '-02-14', 'Saint-Valentin');
+    add(addD(E, -47), 'Mardi gras');
+    add(sunday(y, 2, 1), 'Fête des grands-mères');
+    add(y + '-03-08', 'Journée des droits des femmes');
+    add(seasonDay(y, 0), 'Printemps', 'Début du printemps');
+    add(sunday(y, 2, -1), 'Changement d’heure', 'Heure d’été : cette nuit, on avance d’une heure (2 h → 3 h). On dort une heure de moins.');
+    add(y + '-04-01', 'Poisson d’avril');
+    add(E, 'Pâques');
+    add(pentecost, 'Pentecôte');
+    add(mothers, 'Fête des mères');
+    add(sunday(y, 5, 3), 'Fête des pères');
+    add(seasonDay(y, 1), 'Été', 'Début de l’été, le jour le plus long');
+    add(y + '-06-21', 'Fête de la musique');
+    add(seasonDay(y, 2), 'Automne', 'Début de l’automne');
+    add(sunday(y, 9, -1), 'Changement d’heure', 'Heure d’hiver : cette nuit, on recule d’une heure (3 h → 2 h). On dort une heure de plus.');
+    add(y + '-10-31', 'Halloween');
+    add(seasonDay(y, 3), 'Hiver', 'Début de l’hiver, le jour le plus court');
+    add(y + '-12-24', 'Réveillon de Noël');
+    add(y + '-12-31', 'Saint-Sylvestre', 'Réveillon du Nouvel An');
+    if (showIslam()) {
+      var approx = 'Date approximative, à un jour près selon l’observation de la lune';
+      var h0 = Math.floor((y - 622) * 33 / 32) - 1;
+      for (var h = h0; h <= h0 + 3; h++) {
+        [[1, 1, 'Nouvel an de l’Hégire'], [1, 10, 'Achoura'], [3, 12, 'Mawlid'], [9, 1, 'Début du Ramadan'],
+         [9, 27, 'Nuit du Destin'], [10, 1, 'Aïd el-Fitr'], [12, 10, 'Aïd el-Kebir']].forEach(function (x) {
+          var d = hijriToDate(h, x[0], x[1]);
+          if (d.getFullYear() === y) add(d, x[2], approx);
+        });
+      }
+    }
+    spCache[key] = map;
+    return map;
+  }
+  function specialsOn(day) { return showSpecial() ? (specials(parseInt(day.slice(0, 4), 10))[day] || []) : []; }
   function daysBetween(a, b) { return Math.round((parseD(b) - parseD(a)) / 86400000); }
 
   /* ---------- Rendu : en-tête ---------- */
@@ -703,8 +797,9 @@ textarea.input { padding: 10px 12px; min-height: 76px; resize: vertical; }
       if (inMonth && evs.length) monthCount += 0;
       var seen = {}, dots = '';
       evs.forEach(function (e) { var ck = colorKey(e); if (!seen[ck] && Object.keys(seen).length < 4) { seen[ck] = 1; dots += '<i style="background:var(--' + ck + ')"></i>'; } });
-      var hol = holidayOn(s);
-      var label = fmtDay.format(d) + (hol ? ', férié : ' + hol : '') + (evs.length ? ', ' + evs.length + (evs.length > 1 ? ' événements' : ' événement') : '');
+      var hol = holidayOn(s), sps = specialsOn(s);
+      if (sps.length && !hol && Object.keys(seen).length < 4) dots += '<i class="sp"></i>';
+      var label = fmtDay.format(d) + (hol ? ', férié : ' + hol : '') + (sps.length ? ', ' + sps.map(function (x) { return x.t; }).join(', ') : '') + (evs.length ? ', ' + evs.length + (evs.length > 1 ? ' événements' : ' événement') : '');
       html += '<button type="button" class="day' + (inMonth ? '' : ' out') + (s === today ? ' today' : '') + (s === state.selected ? ' sel' : '') + (hol ? ' hol' : '') +
         '" data-date="' + s + '" aria-label="' + esc(label) + '" aria-pressed="' + (s === state.selected) + '"><span class="num">' + d.getDate() + '</span><span class="dots">' + dots + '</span></button>';
     }
@@ -731,8 +826,9 @@ textarea.input { padding: 10px 12px; min-height: 76px; resize: vertical; }
     $('#dayTitle').textContent = state.selected === today ? 'Aujourd’hui' : fmtDay.format(d);
     $('#dayCount').textContent = evs.length ? evs.length + (evs.length > 1 ? ' événements' : ' événement') : '';
     var box = $('#dayList'), hol = holidayOn(state.selected);
-    var holHtml = hol ? '<div class="holi">🇫🇷 <span>Jour férié · <b>' + esc(hol) + '</b></span></div>' : '';
-    if (!evs.length && hol) { box.innerHTML = holHtml; return; }
+    var holHtml = (hol ? '<div class="holi">🇫🇷 <span>Jour férié · <b>' + esc(hol) + '</b></span></div>' : '') +
+      specialsOn(state.selected).map(function (x) { return '<div class="holi">' + (/heure/.test(x.t) ? '🕑' : '📅') + ' <span><b>' + esc(x.t) + '</b>' + (x.d ? '<small>' + esc(x.d) + '</small>' : '') + '</span></div>'; }).join('');
+    if (!evs.length && holHtml) { box.innerHTML = holHtml; return; }
     if (!evs.length) {
       var canAdd = true;
       box.innerHTML = '<div class="empty"><p>' + (state.events.length ? 'Rien de prévu ce jour-là.' : 'Votre calendrier est vide. Ajoutez votre premier événement avec une adresse pour le voir apparaître sur le globe.') + '</p>' +
@@ -1350,6 +1446,11 @@ textarea.input { padding: 10px 12px; min-height: 76px; resize: vertical; }
       else enableNotifs(b);
     });
     $('#setOverlay').addEventListener('click', onSettingsClick);
+    $('#setOverlay').addEventListener('change', function (ev) {
+      var t = ev.target.getAttribute && ev.target.getAttribute('data-t'); if (!t) return;
+      lsSet(t === 'special' ? 'nc.special' : 'nc.islam', ev.target.checked ? '1' : '0');
+      renderAll();
+    });
     $('#setup').addEventListener('click', onSetupClick);
     $('#setup').addEventListener('submit', onSetupSubmit);
     $('#legend').addEventListener('click', function () { state.editNames = true; renderNotice(); var el = $('#nameA'); if (el) el.focus(); });
@@ -1692,6 +1793,10 @@ textarea.input { padding: 10px 12px; min-height: 76px; resize: vertical; }
         ['a', 'b'].map(function (w) { return '<button type="button" data-x="me" data-w="' + w + '" aria-pressed="' + (me === w) + '"><i class="dot ' + w + '"></i><span class="n">' + esc(nameOf(w)) + '</span></button>'; }).join('') + '</div></div>' +
       (validCode(code) ? '<div class="set-row"><h3>Inviter l’autre</h3><p>Envoyez ce lien. En l’ouvrant, on rejoint ce calendrier.</p><div class="codebox">' + esc(shareLink(code)) + '</div>' +
         '<div class="actions">' + (navigator.share ? '<button class="btn small" type="button" data-x="share">Envoyer</button>' : '') + '<button class="btn small" type="button" data-x="copy">Copier le lien</button></div></div>' : '') +
+      '<div class="set-row"><h3>Dates du calendrier</h3><div class="toggles">' +
+        '<label class="check"><input type="checkbox" data-t="special"' + (showSpecial() ? ' checked' : '') + '> Fêtes et dates spéciales (changement d’heure, fête des mères, saisons…)</label>' +
+        '<label class="check"><input type="checkbox" data-t="islam"' + (showIslam() ? ' checked' : '') + '> Fêtes musulmanes (Ramadan, Aïd…)</label>' +
+        '</div><p>Les jours fériés sont toujours affichés.</p></div>' +
       '<div class="set-row"><h3>Prénoms</h3><div class="actions"><button class="btn small" type="button" data-x="names">Modifier les prénoms</button></div></div>' +
       '<div class="actions"><button class="btn grow" type="button" data-x="close">Fermer</button></div>';
   }
