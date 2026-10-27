@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>Notre Calendrier</title>
-<meta name="version" content="1.2">
+<meta name="version" content="1.3">
 <meta name="description" content="Notre calendrier à deux, avec le globe de nos lieux et des rappels.">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon-192.png" type="image/png">
@@ -277,6 +277,11 @@ h1 {
 .field > label.check { text-transform: none; letter-spacing: 0; font-size: 0.95rem; color: var(--ink); }
 .toggles { display: flex; flex-direction: column; gap: 2px; }
 .check input { width: 22px; height: 22px; accent-color: var(--ink); flex: none; margin: 0; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chips button { min-height: 38px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--bg); font-weight: 600; font-size: 0.88rem; }
+.chips button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.chips button:disabled { opacity: 0.4; }
+select.input { appearance: none; -webkit-appearance: none; background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%); background-position: calc(100% - 18px) 50%, calc(100% - 13px) 50%; background-size: 5px 5px; background-repeat: no-repeat; padding-right: 32px; }
 /* Formulaire */
 .overlay { position: fixed; inset: 0; background: rgba(8, 14, 24, 0.55); z-index: 50; display: flex; align-items: flex-end; justify-content: center; }
 .sheet {
@@ -433,11 +438,18 @@ textarea.input { padding: 10px 12px; min-height: 76px; resize: vertical; }
     </div>
     <div class="row2">
       <div class="field"><label for="fStart">Début</label><input class="input" id="fStart" type="date"></div>
-      <div class="field" id="fEndBox"><label for="fEnd">Fin (facultatif)</label><input class="input" id="fEnd" type="date"></div>
+      <div class="field" id="fEndBox"><label for="fEnd" id="fEndLab">Fin (facultatif)</label><input class="input" id="fEnd" type="date"></div>
     </div>
     <div class="field">
-      <label class="check"><input type="checkbox" id="fYearly"> Tous les ans (anniversaire, fête…)</label>
-      <p class="hint" id="fYearlyHint" hidden>Revient chaque année à la même date, avec les rappels. Pour un anniversaire, mettez la date de naissance : l’âge s’affichera.</p>
+      <label for="fRepeat">Répéter</label>
+      <select class="input" id="fRepeat">
+        <option value="">Jamais</option>
+        <option value="weekly">Chaque semaine</option>
+        <option value="biweekly">Toutes les 2 semaines</option>
+        <option value="monthly">Chaque mois</option>
+        <option value="yearly">Chaque année (anniversaire, fête…)</option>
+      </select>
+      <p class="hint" id="fYearlyHint" hidden>Pour un anniversaire, mettez la date de naissance : l’âge s’affichera.</p>
     </div>
     <div class="field">
       <label for="fTime">Heure (facultatif)</label>
@@ -456,6 +468,11 @@ textarea.input { padding: 10px 12px; min-height: 76px; resize: vertical; }
       </div>
       <button class="btn small" id="fPick" type="button" style="align-self:flex-start">Choisir sur le globe</button>
       <p class="hint">Tapez une adresse (rue, ville) puis « Chercher cette adresse » et choisissez le bon résultat. Vous pouvez aussi coller des coordonnées ou un lien Google Maps.</p>
+    </div>
+    <div class="field">
+      <span class="lab">Rappels</span>
+      <div class="chips" id="fRem" role="group" aria-label="Rappels"></div>
+      <p class="hint" id="fRemHint" hidden>Ajoutez une heure pour les rappels « 10 min » et « 1 h avant ».</p>
     </div>
     <div class="field">
       <label for="fNote">Note (facultatif)</label>
@@ -591,33 +608,70 @@ textarea.input { padding: 10px 12px; min-height: 76px; resize: vertical; }
   function isLeap(y) { return (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0; }
   // Date de l'événement annuel pour une année (29 février → 28 février les années non bissextiles)
   function occIn(e, y) { var md = e.start.slice(5); if (md === '02-29' && !isLeap(y)) md = '02-28'; return y + '-' + md; }
+  var REPEAT_LABEL = { weekly: 'chaque semaine', biweekly: 'toutes les 2 semaines', monthly: 'chaque mois', yearly: 'tous les ans' };
+  function repeatOf(e) { return e.repeat && REPEAT_LABEL[e.repeat] ? e.repeat : (e.yearly ? 'yearly' : ''); }
+  function isRep(e) { return !!repeatOf(e); }
+  function daysIn(y, m) { return new Date(y, m, 0).getDate(); }  // m de 1 à 12
+  function monthOcc(e, y, m) { var d = Math.min(parseInt(e.start.slice(8), 10), daysIn(y, m)); return y + '-' + pad(m) + '-' + pad(d); }
+  function addDays(dstr, n) { var d = parseD(dstr); return ymd(new Date(d.getFullYear(), d.getMonth(), d.getDate() + n)); }
+  // L'événement répété a-t-il lieu ce jour-là ?
+  function occursOn(e, day) {
+    var r = repeatOf(e);
+    if (day < e.start || (e.until && day > e.until)) return false;
+    if (r === 'weekly') return daysBetween(e.start, day) % 7 === 0;
+    if (r === 'biweekly') return daysBetween(e.start, day) % 14 === 0;
+    if (r === 'monthly') return monthOcc(e, parseInt(day.slice(0, 4), 10), parseInt(day.slice(5, 7), 10)) === day;
+    if (r === 'yearly') return occIn(e, parseInt(day.slice(0, 4), 10)) === day;
+    return false;
+  }
+  // Prochaine date (à partir de « from » inclus), ou null si la répétition est finie
   function nextOcc(e, from) {
-    if (e.start >= from) return e.start;
-    var y = parseInt(from.slice(0, 4), 10), d = occIn(e, y);
-    return d >= from ? d : occIn(e, y + 1);
+    var r = repeatOf(e), d;
+    if (e.start >= from) d = e.start;
+    else if (r === 'weekly' || r === 'biweekly') { var step = r === 'weekly' ? 7 : 14; d = addDays(e.start, Math.ceil(daysBetween(e.start, from) / step) * step); }
+    else if (r === 'monthly') {
+      var y = parseInt(from.slice(0, 4), 10), m = parseInt(from.slice(5, 7), 10);
+      d = monthOcc(e, y, m);
+      if (d < from) { m++; if (m > 12) { m = 1; y++; } d = monthOcc(e, y, m); }
+    } else {
+      var yy = parseInt(from.slice(0, 4), 10); d = occIn(e, yy);
+      if (d < from) d = occIn(e, yy + 1);
+    }
+    return e.until && d > e.until ? null : d;
   }
   function inst(e, d) {
-    var age = parseInt(d.slice(0, 4), 10) - parseInt(e.start.slice(0, 4), 10);
+    var age = repeatOf(e) === 'yearly' ? parseInt(d.slice(0, 4), 10) - parseInt(e.start.slice(0, 4), 10) : 0;
     return Object.assign({}, e, { start: d, end: '', age: age });
   }
   function eventsOn(day) {
     var out = [];
     state.events.forEach(function (e) {
-      if (e.yearly) { if (day >= e.start && occIn(e, parseInt(day.slice(0, 4), 10)) === day) out.push(inst(e, day)); }
+      if (isRep(e)) { if (occursOn(e, day)) out.push(inst(e, day)); }
       else if (e.start <= day && day <= endOf(e)) out.push(e);
     });
     return sortEv(out);
   }
-  // Prochaines occurrences (les événements annuels sont ramenés à leur prochaine date)
+  // Prochaines occurrences (les événements répétés sont ramenés à leur prochaine date)
   function upcomingList() {
-    return sortEv(state.events.map(function (e) { return e.yearly ? inst(e, nextOcc(e, today)) : e; }).filter(function (e) { return endOf(e) >= today; }));
+    var out = [];
+    state.events.forEach(function (e) {
+      if (isRep(e)) { var d = nextOcc(e, today); if (d) out.push(inst(e, d)); }
+      else if (endOf(e) >= today) out.push(e);
+    });
+    return sortEv(out);
   }
+  function stillOn(e) { return isRep(e) ? !!nextOcc(e, today) : endOf(e) >= today; }
   function inRange(e, first, last) {
-    if (!e.yearly) return e.start <= last && endOf(e) >= first;
-    var d = occIn(e, parseInt(first.slice(0, 4), 10));
-    return d >= first && d <= last && d >= e.start;
+    if (!isRep(e)) return e.start <= last && endOf(e) >= first;
+    var d = nextOcc(e, first);
+    return !!d && d <= last;
   }
-  function ageTxt(e) { return e.yearly && e.age > 0 ? e.age + (e.age > 1 ? ' ans' : ' an') : ''; }
+  function ageTxt(e) { return repeatOf(e) === 'yearly' && e.age > 0 ? e.age + (e.age > 1 ? ' ans' : ' an') : ''; }
+
+  /* ---------- Rappels ---------- */
+  var REMINDERS = [['veille', 'La veille (19 h)'], ['jour', 'Le matin (8 h)'], ['1s', '1 semaine avant'], ['1j', '1 jour avant'], ['1h', '1 h avant'], ['10m', '10 min avant']];
+  var DEFAULT_REM = ['veille', 'jour', '1h'];
+  function remindersOf(e) { return Array.isArray(e.reminders) ? e.reminders : DEFAULT_REM.slice(); }
 
   /* ---------- Jours fériés (France) ---------- */
   var holCache = {};
@@ -816,7 +870,7 @@ textarea.input { padding: 10px 12px; min-height: 76px; resize: vertical; }
     return '<div class="ev" data-id="' + esc(e.id) + '" data-act="edit" role="button" tabindex="0">' +
       '<div class="when">' + esc(when) + '</div>' +
       '<div class="main"><div class="title">' + dotHtml(e) + '<span class="t">' + esc(e.title) + (ageTxt(e) ? ' · ' + esc(ageTxt(e)) : '') + '</span></div>' +
-      '<div class="meta"><span>' + esc(whoLabel(e.who)) + (e.yearly ? ' · tous les ans' : '') + '</span>' + (ps ? '<span>·</span>' + PIN_SVG + '<span>' + esc(e.place.name) + '</span><a data-act="link" href="' + esc(dirUrl(e.place.lat, e.place.lon)) + '" target="_blank" rel="noopener">Itinéraire</a>' : '') + '</div>' + range +
+      '<div class="meta"><span>' + esc(whoLabel(e.who)) + (isRep(e) ? ' · ' + REPEAT_LABEL[repeatOf(e)] : '') + '</span>' + (ps ? '<span>·</span>' + PIN_SVG + '<span>' + esc(e.place.name) + '</span><a data-act="link" href="' + esc(dirUrl(e.place.lat, e.place.lon)) + '" target="_blank" rel="noopener">Itinéraire</a>' : '') + '</div>' + range +
       (e.note ? '<div class="note">' + esc(e.note) + '</div>' : '') + '</div>' +
       (ps ? '<button type="button" class="btn small go" data-id="' + esc(e.id) + '" data-act="show">Globe</button>' : '<span></span>') + '</div>';
   }
@@ -894,7 +948,7 @@ textarea.input { padding: 10px 12px; min-height: 76px; resize: vertical; }
     var y = state.month.getFullYear(), m = state.month.getMonth(), first = ymd(new Date(y, m, 1)), last = ymd(new Date(y, m + 1, 0));
     return state.events.filter(function (e) {
       if (!(e.place && typeof e.place.lat === 'number' && typeof e.place.lon === 'number')) return false;
-      if (state.filter === 'upcoming') return e.yearly || endOf(e) >= today;
+      if (state.filter === 'upcoming') return stillOn(e);
       if (state.filter === 'month') return inRange(e, first, last);
       return true;
     });
@@ -909,7 +963,7 @@ textarea.input { padding: 10px 12px; min-height: 76px; resize: vertical; }
       var g = map[k];
       g.events.push(e);
       var ck = colorKey(e); if (g.colors.indexOf(ck) < 0) g.colors.push(ck);
-      if (e.yearly || endOf(e) >= today) g.past = false;
+      if (stillOn(e)) g.past = false;
     });
     G.groups = groups;
     var allPl = state.events.filter(function (e) { return e.place && typeof e.place.lat === 'number'; }), uniq = {};
@@ -1192,7 +1246,7 @@ textarea.input { padding: 10px 12px; min-height: 76px; resize: vertical; }
     box.className = 'card pincard';
     box.innerHTML = '<h3><span>' + esc(g.name) + '</span><button class="icon-btn" type="button" data-act="closepin" aria-label="Fermer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></h3>' +
       g.events.map(function (e) {
-        return '<div class="row"><div><b>' + esc(e.title) + '</b><small>' + esc(fmtShort.format(parseD(e.yearly ? nextOcc(e, today) : e.start))) + (e.yearly ? ' (tous les ans)' : '') + (!e.yearly && e.end && e.end > e.start ? ' → ' + esc(fmtShort.format(parseD(e.end))) : '') + ' · ' + esc(whoLabel(e.who)) + '</small></div>' +
+        return '<div class="row"><div><b>' + esc(e.title) + '</b><small>' + esc(fmtShort.format(parseD(isRep(e) ? (nextOcc(e, today) || e.start) : e.start))) + (isRep(e) ? ' (' + REPEAT_LABEL[repeatOf(e)] + ')' : '') + (!isRep(e) && e.end && e.end > e.start ? ' → ' + esc(fmtShort.format(parseD(e.end))) : '') + ' · ' + esc(whoLabel(e.who)) + '</small></div>' +
           '<button class="btn small" type="button" data-act="jump" data-id="' + esc(e.id) + '">Calendrier</button></div>';
       }).join('') +
       (state.me ? '<div class="row"><span class="sun">Vous êtes ' + esc(distLabel(g)) + '</span></div>' : '') +
@@ -1201,7 +1255,7 @@ textarea.input { padding: 10px 12px; min-height: 76px; resize: vertical; }
   }
 
   function flyHome() {
-    var up = sortEv(state.events.filter(function (e) { return e.place && typeof e.place.lat === 'number' && (e.yearly || endOf(e) >= today); }))[0] ||
+    var up = sortEv(state.events.filter(function (e) { return e.place && typeof e.place.lat === 'number' && stillOn(e); }))[0] ||
       sortEv(state.events.filter(function (e) { return e.place && typeof e.place.lat === 'number'; })).pop();
     if (up) G.flyTo(up.place.lon, up.place.lat, 1.3);
     else G.flyTo(2.35, 30, 1);
@@ -1303,7 +1357,10 @@ textarea.input { padding: 10px 12px; min-height: 76px; resize: vertical; }
     $('#fTitle').value = state.draft.title || '';
     $('#fStart').value = state.draft.start || state.selected;
     $('#fEnd').value = state.draft.end || '';
-    $('#fYearly').checked = !!state.draft.yearly; syncYearly();
+    state.draft.repeat = repeatOf(state.draft); state.draft.reminders = remindersOf(state.draft).slice();
+    $('#fRepeat').value = state.draft.repeat;
+    $('#fEnd').value = state.draft.repeat ? (state.draft.until || '') : (state.draft.end || '');
+    syncYearly(); renderRem();
     $('#fTime').value = state.draft.time || '';
     $('#fNote').value = state.draft.note || '';
     $('#fPlace').value = '';
@@ -1315,13 +1372,22 @@ textarea.input { padding: 10px 12px; min-height: 76px; resize: vertical; }
   }
   function closeSheet() { $('#overlay').hidden = true; state.draft = null; }
   function syncYearly() {
-    var on = $('#fYearly').checked;
-    $('#fEndBox').style.visibility = on ? 'hidden' : '';
-    $('#fYearlyHint').hidden = !on;
+    var r = $('#fRepeat').value;
+    $('#fEndLab').textContent = r ? 'Jusqu’au (facultatif)' : 'Fin (facultatif)';
+    $('#fYearlyHint').hidden = r !== 'yearly';
+  }
+  function renderRem() {
+    var d = state.draft; if (!d) return;
+    var hasTime = !!$('#fTime').value;
+    $('#fRem').innerHTML = REMINDERS.map(function (x) {
+      var needTime = x[0] === '1h' || x[0] === '10m';
+      return '<button type="button" data-rem="' + x[0] + '" aria-pressed="' + (d.reminders.indexOf(x[0]) >= 0) + '"' + (needTime && !hasTime ? ' disabled' : '') + '>' + x[1] + '</button>';
+    }).join('');
+    $('#fRemHint').hidden = hasTime;
   }
   function readForm() {
     var d = state.draft; if (!d) return;
-    d.title = $('#fTitle').value.trim(); d.start = $('#fStart').value; d.end = $('#fEnd').value; d.yearly = $('#fYearly').checked; if (d.yearly) d.end = ''; d.time = $('#fTime').value; d.note = $('#fNote').value.trim();
+    d.title = $('#fTitle').value.trim(); d.start = $('#fStart').value; d.repeat = $('#fRepeat').value; d.yearly = d.repeat === 'yearly'; if (d.repeat) { d.until = $('#fEnd').value; d.end = ''; } else { d.end = $('#fEnd').value; d.until = ''; } d.time = $('#fTime').value; d.note = $('#fNote').value.trim();
     if (d.place) { var nm = $('#fPlaceName').value.trim(); if (nm) d.place.name = nm; }
   }
   function showErr(msg) { var e = $('#fErr'); e.textContent = msg; e.hidden = false; }
@@ -1395,7 +1461,9 @@ textarea.input { padding: 10px 12px; min-height: 76px; resize: vertical; }
     else toast('Enregistrement impossible. Réessayez dans un instant.');
   }
   function cleanData(d) {
-    var out = { title: d.title, who: d.who, yearly: !!d.yearly, color: /^p[1-8]$/.test(d.color || '') ? d.color : '', start: d.start, end: d.end && d.end > d.start ? d.end : '', time: d.time || '', note: d.note || '', place: null };
+    var out = { title: d.title, who: d.who, yearly: d.repeat === 'yearly', repeat: d.repeat || '', until: d.repeat && d.until && d.until >= d.start ? d.until : '',
+      reminders: Array.isArray(d.reminders) ? d.reminders.filter(function (r) { return REMINDERS.some(function (x) { return x[0] === r; }); }) : DEFAULT_REM.slice(),
+      createdBy: d.createdBy || '', createdAt: d.createdAt || 0, color: /^p[1-8]$/.test(d.color || '') ? d.color : '', start: d.start, end: d.end && d.end > d.start ? d.end : '', time: d.time || '', note: d.note || '', place: null };
     if (d.place && typeof d.place.lat === 'number' && typeof d.place.lon === 'number') out.place = { name: d.place.name || 'Lieu', lat: d.place.lat, lon: d.place.lon };
     return out;
   }
@@ -1407,7 +1475,13 @@ textarea.input { padding: 10px 12px; min-height: 76px; resize: vertical; }
       renderAll(); return;
     }
     data.updatedAt = Date.now();
-    if (d.id) await FS.setDoc(FS.doc(evCol, d.id), data); else await FS.addDoc(evCol, data);
+    if (d.notifyNew) data.notifyNew = true;
+    if (d.id) await FS.setDoc(FS.doc(evCol, d.id), data);
+    else {
+      data.createdBy = lsGet('nc.me') || ''; data.createdAt = Date.now();
+      if (data.createdBy) data.notifyNew = true;  // le robot prévient l'autre
+      await FS.addDoc(evCol, data);
+    }
   }
   async function deleteEvent(id) {
     if (!db) { state.events = state.events.filter(function (e) { return e.id !== id; }); renderAll(); return; }
@@ -1422,7 +1496,7 @@ textarea.input { padding: 10px 12px; min-height: 76px; resize: vertical; }
   /* ---------- Événements d'interface ---------- */
   function jumpTo(id) {
     var e = state.events.filter(function (x) { return x.id === id; })[0]; if (!e) return;
-    var when = e.yearly ? nextOcc(e, today) : e.start, d = parseD(when);
+    var when = isRep(e) ? (nextOcc(e, today) || e.start) : e.start, d = parseD(when);
     state.month = new Date(d.getFullYear(), d.getMonth(), 1); state.selected = when;
     setView('cal'); renderAll();
     if (e.place && typeof e.place.lat === 'number') G.flyTo(e.place.lon, e.place.lat, 1.5);
@@ -1500,7 +1574,15 @@ textarea.input { padding: 10px 12px; min-height: 76px; resize: vertical; }
 
     // Formulaire
     $('#fWho').addEventListener('click', function (ev) { var b = ev.target.closest('button[data-who]'); if (!b) return; state.draft.who = b.getAttribute('data-who'); renderWho(); renderColor(); });
-    $('#fYearly').addEventListener('change', syncYearly);
+    $('#fRepeat').addEventListener('change', syncYearly);
+    $('#fTime').addEventListener('change', renderRem);
+    $('#fTime').addEventListener('input', renderRem);
+    $('#fRem').addEventListener('click', function (ev) {
+      var b = ev.target.closest('button[data-rem]'); if (!b || b.disabled || !state.draft) return;
+      var r = b.getAttribute('data-rem'), list = state.draft.reminders, i = list.indexOf(r);
+      if (i >= 0) list.splice(i, 1); else list.push(r);
+      renderRem();
+    });
     $('#fColor').addEventListener('click', function (ev) { var b = ev.target.closest('button[data-color]'); if (!b) return; state.draft.color = b.getAttribute('data-color'); state.draft.autoColor = false; renderColor(); });
     $('#fStart').addEventListener('change', function (ev) { var d = state.draft; if (d && !d.id && d.autoColor && ev.target.value) { d.color = pickFreeColor(ev.target.value); renderColor(); } });
     $('#pickOk').addEventListener('click', function () {
@@ -1566,7 +1648,7 @@ textarea.input { padding: 10px 12px; min-height: 76px; resize: vertical; }
       }
       try {
         await saveEvent(d);
-        var sday = d.yearly ? nextOcc(d, today) : d.start, sd = parseD(sday);
+        var sday = isRep(d) ? (nextOcc(d, today) || d.start) : d.start, sd = parseD(sday);
         state.month = new Date(sd.getFullYear(), sd.getMonth(), 1); state.selected = sday;
         closeSheet(); renderAll();
         toast('Événement enregistré');
@@ -1783,9 +1865,9 @@ textarea.input { padding: 10px 12px; min-height: 76px; resize: vertical; }
   function renderSettings() {
     var code = lsGet('nc.couple'), me = lsGet('nc.me'), notif = '';
     if (!VAPID_KEY) notif = '<p>Les rappels arrivent bientôt.</p>';
-    else if (notifOn()) notif = '<p>Activés sur ce téléphone : la veille au soir, le matin du jour J, et une heure avant si l’événement a une heure.</p><div class="actions"><button class="btn small" type="button" data-x="notif-off">Désactiver</button><button class="btn small" type="button" data-x="notif-test">Vérifier</button></div>';
+    else if (notifOn()) notif = '<p>Activés sur ce téléphone. Les rappels se choisissent dans chaque événement, et vous êtes prévenu quand l’autre ajoute un événement.</p><div class="actions"><button class="btn small" type="button" data-x="notif-off">Désactiver</button><button class="btn small" type="button" data-x="notif-test">Vérifier</button></div>';
     else if (isIOS() && !isStandalone()) notif = '<p>Sur iPhone, ajoutez d’abord l’appli à l’écran d’accueil :</p><ol class="steps"><li>Dans Safari, touchez Partager (carré avec une flèche).</li><li>« Sur l’écran d’accueil », puis « Ajouter ».</li><li>Ouvrez l’appli depuis l’icône et revenez ici.</li></ol>';
-    else if (notifSupported()) notif = '<p>La veille au soir, le matin du jour J, et une heure avant si l’événement a une heure.</p><div class="actions"><button class="btn primary small" type="button" data-x="notif-on">Activer les rappels</button></div>';
+    else if (notifSupported()) notif = '<p>Pour les rappels de vos événements, et quand l’autre en ajoute un.</p><div class="actions"><button class="btn primary small" type="button" data-x="notif-on">Activer les rappels</button></div>';
     else notif = '<p>Ce navigateur ne peut pas recevoir de rappels.</p>';
     $('#setSheet').innerHTML = '<h2 id="setTitle">Réglages</h2>' +
       '<div class="set-row"><h3>Rappels</h3>' + notif + '</div>' +
